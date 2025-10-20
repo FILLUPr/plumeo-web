@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>My Sweet Story - เขียนเรื่อง</title>
+<style>
+  :root{ --bg:#FFF5E0; --panel:#FFF0F5; --accent:#C97381; --control:#F4B2C1; --text:#4B2E2E; }
+  body{ margin:0; font-family:'Cordia New',sans-serif; background:var(--bg); color:var(--text); padding:18px; }
+  header{ display:flex; gap:8px; align-items:center; justify-content:space-between; margin-bottom:12px;}
+  h1{ font-size:26px; color:#C97381; margin:0; text-align:center; flex:1;}
+  .btn{ padding:8px 12px; border-radius:10px; border:none; background:linear-gradient(180deg,#F1A9B6,#D97288); color:white; cursor:pointer; box-shadow:0 6px 12px rgba(180,110,120,.18); }
+  main{ max-width:880px; margin:0 auto; }
+  .section{ background:var(--panel); border-radius:12px; padding:12px; margin-bottom:12px; box-shadow:0 6px 18px rgba(150,90,110,.06); }
+  .section-title{ font-weight:bold; color:#C87D7D; margin-bottom:6px; }
+  textarea{ width:100%; min-height:110px; font-family:'Cordia New'; font-size:14pt; padding:10px; border-radius:10px; border:2px solid #F4C2C2; background:#FFF5F0; resize:vertical; }
+  .separator{ text-align:center; font-size:20pt; color:#E49BAF; margin:12px 0; animation: floaty 1.2s infinite alternate; }
+  @keyframes floaty{ 0%{transform:translateY(0)} 100%{transform:translateY(-6px)} }
+  .chapter-title{ font-weight:bold; margin-bottom:6px; color:#8b4b51; }
+  .top-actions{ display:flex; gap:8px; align-items:center; }
+  .small{ padding:6px 10px; border-radius:8px; border:none; background:#F4B2C1; color:white; cursor:pointer; }
+  .chapter-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .small.danger{ background:#e57386; }
+
+  /* Auth Modal */
+  .auth-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:9999}
+  .auth-modal{width:min(420px,92vw);background:#FFF;border-radius:14px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:'Cordia New',sans-serif}
+  .auth-modal h3{margin:0 0 8px 0;color:#C97381;font-size:22px}
+  .auth-modal input{width:100%;padding:10px;border-radius:8px;border:2px solid #F4C2C2;margin:6px 0;font-size:14pt}
+  .auth-row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .btn.primary{padding:8px 12px;border:none;border-radius:10px;background:linear-gradient(180deg,#F1A9B6,#D97288);color:#fff;cursor:pointer}
+  .btn.ghost{padding:8px 12px;border-radius:10px;border:2px solid #F4B2C1;background:#fff;color:#8b4b51;cursor:pointer}
+  .auth-note{font-size:13px;color:#8a5b5e;margin-top:6px}
+  .link{color:#C97381; cursor:pointer; text-decoration:underline;}
+  .sep-center{display:flex;align-items:center;gap:8px;margin:8px 0}
+  .sep-center::before,.sep-center::after{content:"";flex:1;height:1px;background:#f0cfd6}
+</style>
+</head>
+<body>
+<header>
+  <div class="top-actions">
+    <button class="btn" id="saveBtn">💾 บันทึก</button>
+    <button class="btn" id="homeBtn">🏠 กลับหน้าหลัก</button>
+    <button class="btn" id="downloadBtn">📄 ดาวน์โหลด Word</button>
+  </div>
+  <h1>🧁 My Sweet Story</h1>
+  <div class="top-actions">
+    <button class="btn" id="loginBtn" style="display:none">🔑 เข้าสู่ระบบ</button>
+    <button class="btn" id="logoutBtn" style="display:none">🚪 ออกจากระบบ</button>
+  </div>
+</header>
+
+<main>
+  <div id="storyForm">
+    <div class="section">
+      <div class="section-title">ชื่อเรื่อง ❤️</div>
+      <input id="title" style="width:100%; padding:10px; font-size:16pt; border-radius:8px; border:2px solid #F4C2C2;" placeholder="ใส่ชื่อเรื่องของตรงนี้" />
+    </div>
+
+    <div class="section">
+      <div class="section-title">หมวดหมู่นิยาย 🍪</div>
+      <select id="cat" style="width:100%; padding:10px; font-size:14pt; border-radius:8px; border:2px solid #F4C2C2;">
+        <option>💕รัก / โรแมนติก</option>
+        <option>🧚แฟนตาซี / ผจญภัย</option>
+        <option>🔍สืบสวน / ระทึกขวัญ / ลึกลับ</option>
+        <option>🚀ไซไฟ / วิทยาศาสตร์</option>
+        <option>😂ฮา / คอมเมดี้ / ชีวิตประจำวัน</option>
+        <option>📖วรรณกรรม / คลาสสิค</option>
+        <option>🌈นิยาย LGBTQ+</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <div class="section-title">ผู้เขียน ✏️</div>
+      <input id="author" style="width:100%; padding:10px; font-size:14pt; border-radius:8px; border:2px solid #F4C2C2;" placeholder="นามปากกา" />
+    </div>
+
+    <div class="section">
+      <div class="section-title">แรงบันดาลใจของนิยายเรื่องนี้ 🍓</div>
+      <textarea id="inspiration" placeholder="เขียนสิ่งที่อยากสื่อในตอนนี้ เช่น อารมณ์ของตัวละคร "></textarea>
+    </div>
+
+    <div class="section">
+      <div class="section-title">ตัวละครในเรื่องนี้ 🧸</div>
+      <textarea id="characters" placeholder="รายชื่อตัวละคร / การเปลี่ยนแปลงสำคัญ"></textarea>
+    </div>
+
+    <div class="section">
+      <div class="section-title">คำโปรยสั้น ๆ ✨</div>
+      <textarea id="blurb" placeholder="บันทึกเรื่องราวอบอุ่นหัวใจ ที่เริ่มต้นจากกลิ่นขนมและรอยยิ้มของเธอ"></textarea>
+    </div>
+
+    <div class="separator">❋ ❋ ❋</div>
+    <div id="chapters"></div>
+    <div style="text-align:center; margin:10px 0;">
+      <button class="small" id="addChapterBtn">➕ เพิ่มตอนใหม่</button>
+    </div>
+  </div>
+</main>
+
+<!-- Auth Modal -->
+<div class="auth-modal-backdrop" id="authBackdrop">
+  <div class="auth-modal">
+    <h3>เข้าสู่ระบบ</h3>
+    <input id="authEmail" type="email" placeholder="อีเมล" />
+    <input id="authPassword" type="password" placeholder="รหัสผ่าน" />
+    <div class="auth-row">
+      <button class="btn primary" id="emailSignInBtn">เข้าสู่ระบบ</button>
+      <button class="btn ghost" id="emailSignUpBtn">สมัครสมาชิก</button>
+    </div>
+    <div class="sep-center"><span>หรือ</span></div>
+    <button class="btn primary" id="googleBtn" style="width:100%">เข้าสู่ระบบด้วย Google</button>
+    <div class="auth-note">
+      ลืมรหัสผ่าน? <span class="link" id="resetLink">กดที่นี่</span><br/>
+      ยังไม่ยืนยันอีเมล? <span class="link" id="verifyLink">ส่งลิงก์ยืนยันอีกครั้ง</span>
+    </div>
+    <div class="auth-row" style="margin-top:8px">
+      <span></span>
+      <button class="btn ghost" id="closeAuth">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase + Editor -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut,
+    onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence
+  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDocs, setDoc, collection, query, orderBy, getDoc, deleteDoc
+  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+  /* ==== Firebase Config: Plumeo ==== */
+  const firebaseConfig = {
+    apiKey: "AIzaSyBhPnXwOobBPVak6-sNsMCZ-pmz71OaHk",
+    authDomain: "plumeo-475aa.firebaseapp.com",
+    projectId: "plumeo-475aa",
+    storageBucket: "plumeo-475aa.appspot.com",
+    messagingSenderId: "452998025243",
+    appId: "1:452998025243:web:27d16db8360cda2cc711e",
+    measurementId: "G-ZFXVGY4W36"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+  await setPersistence(auth, browserLocalPersistence);
+
+  // Auth UI
+  const loginBtn=document.getElementById('loginBtn'), logoutBtn=document.getElementById('logoutBtn');
+  const backdrop=document.getElementById('authBackdrop'); const emailInput=document.getElementById('authEmail'); const passInput=document.getElementById('authPassword');
+  const emailSignInBtn=document.getElementById('emailSignInBtn'); const emailSignUpBtn=document.getElementById('emailSignUpBtn'); const googleBtn=document.getElementById('googleBtn');
+  const resetLink=document.getElementById('resetLink'); const verifyLink=document.getElementById('verifyLink'); const closeAuth=document.getElementById('closeAuth');
+
+  const showAuth=()=>backdrop.style.display='flex', hideAuth=()=>backdrop.style.display='none';
+  loginBtn.addEventListener('click',showAuth); closeAuth.addEventListener('click',hideAuth);
+  logoutBtn.addEventListener('click',async()=>{ await signOut(auth); location.reload(); });
+  googleBtn.addEventListener('click',async()=>{ await signInWithPopup(auth,provider); hideAuth(); });
+  emailSignInBtn.addEventListener('click',async()=>{ const e=(emailInput.value||'').trim(),p=passInput.value||''; if(!e||!p) return alert('กรอกอีเมลและรหัสผ่าน'); await signInWithEmailAndPassword(auth,e,p); hideAuth(); });
+  emailSignUpBtn.addEventListener('click',async()=>{ const e=(emailInput.value||'').trim(),p=passInput.value||''; if(!e||!p) return alert('กรอกอีเมลและรหัสผ่าน'); const cred=await createUserWithEmailAndPassword(auth,e,p); await setDoc(doc(db,`users/${cred.user.uid}`),{uid:cred.user.uid,email:e,role:'member',createdAt:Date.now()},{merge:true}); try{await sendEmailVerification(cred.user);}catch{} hideAuth(); });
+  resetLink.addEventListener('click',async()=>{ const e=(emailInput.value||'').trim(); if(!e) return alert('ใส่อีเมลก่อน'); await sendPasswordResetEmail(auth,e); alert('ส่งลิงก์รีเซ็ตรหัสผ่านแล้ว'); });
+  verifyLink.addEventListener('click',async()=>{ if(!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน'); await sendEmailVerification(auth.currentUser); alert('ส่งลิงก์ยืนยันแล้ว'); });
+
+  // บังคับล็อกอินก่อนใช้งาน editor
+  onAuthStateChanged(auth, async (user)=>{
+    if(user){
+      loginBtn.style.display='none'; logoutBtn.style.display='inline-block';
+      const profRef=doc(db,`users/${user.uid}`); const profSnap=await getDoc(profRef);
+      if(!profSnap.exists()) await setDoc(profRef,{uid:user.uid,email:user.email||'',role:'member',createdAt:Date.now()},{merge:true});
+      initEditor();
+    }else{
+      loginBtn.style.display='inline-block'; logoutBtn.style.display='none'; showAuth();
+    }
+  });
+
+  // Editor helpers
+  function uid(){ return 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,8); }
+  function addChapter(content){
+    const idx=document.querySelectorAll('#chapters .section.chapter').length+1;
+    const wrap=document.createElement('div'); wrap.className='section chapter'; wrap.dataset.index=String(idx);
+    wrap.innerHTML=`<div class="chapter-header"><div class="chapter-title">ตอนที่ ${idx} 🍰</div><button class="small danger remove-chapter">🗑️ ลบตอนนี้</button></div>
+    <textarea class="chapter-text" placeholder="พิมพ์เนื้อหาตอนที่ ${idx}...">${content||''}</textarea>`;
+    document.getElementById('chapters').appendChild(wrap);
+  }
+  function renumberChapters(){
+    Array.from(document.querySelectorAll('#chapters .section.chapter')).forEach((n,i)=>{ n.dataset.index=String(i+1); n.querySelector('.chapter-title').textContent=`ตอนที่ ${i+1} 🍰`; n.querySelector('.chapter-text').placeholder=`พิมพ์เนื้อหาตอนที่ ${i+1}...`; });
+  }
+  document.addEventListener('click',(e)=>{ const btn=e.target.closest('.remove-chapter'); if(!btn) return; const sec=btn.closest('.section.chapter'); if(!sec) return; if(confirm(`ลบ${sec.querySelector('.chapter-title').textContent} จริงไหม?`)){ sec.remove(); renumberChapters(); } });
+
+  function loadStoryToForm(story){
+    document.getElementById('title').value=story.title||''; document.getElementById('author').value=story.author||'';
+    document.getElementById('blurb').value=story.blurb||''; document.getElementById('inspiration').value=story.inspiration||'';
+    document.getElementById('characters').value=story.characters||''; document.getElementById('chapters').innerHTML='';
+    (story.chapters||[]).forEach(c=>addChapter(c)); if(!story.chapters||!story.chapters.length) addChapter('');
+  }
+
+  const params=new URLSearchParams(location.search); const currentId=params.get('id');
+
+  async function loadStories(){
+    const q=query(collection(db,`users/${auth.currentUser.uid}/stories`),orderBy('updatedAt','desc'));
+    const snap=await getDocs(q); const list=[]; snap.forEach(d=>list.push(d.data())); return list;
+  }
+  async function saveStories(list){
+    const tasks=list.map(s=> setDoc(doc(db,`users/${auth.currentUser.uid}/stories/${s.id}`), s, {merge:true}));
+    await Promise.all(tasks);
+  }
+  async function deleteThisStory(id){
+    await deleteDoc(doc(db,`users/${auth.currentUser.uid}/stories/${id}`));
+  }
+
+  async function initEditor(){
+    if(currentId){
+      const list=await loadStories();
+      const found=list.find(s=>s.id===currentId);
+      if(found) loadStoryToForm(found); else addChapter('');
+    } else { addChapter(''); }
+  }
+
+  document.getElementById('addChapterBtn').addEventListener('click',()=>addChapter(''));
+  document.getElementById('homeBtn').addEventListener('click',()=>location.href='index.html');
+
+  document.getElementById('saveBtn').addEventListener('click', async ()=>{
+    const title=document.getElementById('title').value.trim()||'Untitled';
+    const author=document.getElementById('author').value.trim();
+    const blurb=document.getElementById('blurb').value.trim();
+    const inspiration=document.getElementById('inspiration').value.trim();
+    const characters=document.getElementById('characters').value.trim();
+    const chapters=Array.from(document.querySelectorAll('.chapter-text')).map(t=>t.value);
+
+    const now=Date.now(); let list=await loadStories(); let story;
+    if(currentId){
+      const idx=list.findIndex(s=>s.id===currentId);
+      if(idx>=0){ story={...list[idx], title, author, blurb, inspiration, characters, chapters, updatedAt:now}; list[idx]=story; }
+      else { story={id:currentId, title, author, blurb, inspiration, characters, chapters, updatedAt:now}; list.push(story); }
+    }else{
+      story={id:uid(), title, author, blurb, inspiration, characters, chapters, updatedAt:now};
+      list.push(story);
+    }
+    await saveStories(list);
+    alert('บันทึกเรียบร้อย ❤️');
+    history.replaceState(null,'','write.html?id='+encodeURIComponent(story.id));
+  });
+
+  // Export Word (ไม่เพี้ยน)
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    const title=document.getElementById('title').value.trim()||'Untitled';
+    const author=document.getElementById('author').value.trim()||'';
+    const blurb=document.getElementById('blurb').value.trim()||'';
+    const inspiration=document.getElementById('inspiration').value.trim()||'';
+    const characters=document.getElementById('characters').value.trim()||'';
+    const chaptersEls=Array.from(document.querySelectorAll('.chapter-text'));
+    const chapters=chaptersEls.map((t,i)=>({idx:i+1,text:t.value}));
+
+    const css=`@page{size:A4;margin:2cm}
+      body{font-family:"TH Sarabun New","Cordia New","Leelawadee UI","Tahoma",sans-serif;color:#4B2E2E;font-size:14pt}
+      h1{color:#C97381;font-size:26pt;margin:0 0 12pt 0} h2{font-size:20pt;margin:0 0 6pt 0}
+      h3{font-size:16pt;margin:14pt 0 6pt 0;color:#6b3740} h4{font-size:14pt;margin:12pt 0 6pt 0;color:#8b4b51}
+      p{line-height:1.6;margin:0 0 10pt 0} .sep{text-align:center;color:#E49BAF;font-size:18pt;margin:10pt 0} .meta{color:#6b3740} .blurb{font-style:italic;color:#96685f}`;
+    const esc = t => (t+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml">
+      <head><meta charset="utf-8"/><title>My Sweet Story</title><style>${css}</style></head><body>
+      <h1>My Sweet Story</h1><h2>ชื่อเรื่อง : ${esc(title)}</h2>
+      <p class="meta">ผู้เขียน : ${esc(author)}</p><p class="meta">วันที่พิมพ์ : ${new Date().toLocaleDateString('th-TH')}</p>
+      ${blurb?`<p class="blurb">"${esc(blurb)}"</p>`:''}
+      ${chapters.map(c=>`<h3>— ตอนที่ ${c.idx} —</h3><p>${esc(c.text).replace(/\n/g,'<br/>')}</p><div class="sep">❋ ❋ ❋</div>`).join('')}
+      ${inspiration?`<h4>แรงบันดาลใจตอนนี้ 🍓</h4><p>${esc(inspiration).replace(/\n/g,'<br/>')}</p>`:''}
+      ${characters?`<h4>ตัวละครในตอนนี้ 🧸</h4><p>${esc(characters).replace(/\n/g,'<br/>')}</p>`:''}
+      </body></html>`;
+    const blob=new Blob([html],{type:"application/msword;charset=utf-8"});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(title.replace(/[^0-9a-zA-Zก-ฮ\s\-]/g,'')||'My_Sweet_Story')+'.doc'; a.click(); URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('homeBtn').addEventListener('click',()=>location.href='index.html');
+</script>
+</body>
+</html>
