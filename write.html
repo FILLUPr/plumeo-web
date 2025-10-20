@@ -341,7 +341,7 @@
       chapters.forEach(c => {
         children.push(H2(`— ตอนที่ ${c.idx} —`));
         (c.text || '').split(/\r?\n/).forEach(line => children.push(P(line)));
-      }));
+      });
     }
 
     return new Document({
