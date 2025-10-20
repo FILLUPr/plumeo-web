@@ -82,7 +82,7 @@
 
     <div class="section">
       <div class="section-title">ตัวละครในเรื่องนี้ 🧸</div>
-      <textarea id="characters" placeholder="รายชื่อตัวละคร / การเปลี่ยนแปลงสำคัญ"></textarea>
+      <textarea id="characters" placeholder="รายชื่อตัวละคร / การเปลี่ยนแปลงสำคัญ (บรรทัดละ 1 ตัว)"></textarea>
     </div>
 
     <div class="section">
@@ -192,10 +192,20 @@
   document.addEventListener('click',(e)=>{ const btn=e.target.closest('.remove-chapter'); if(!btn) return; const sec=btn.closest('.section.chapter'); if(!sec) return; if(confirm(`ลบ${sec.querySelector('.chapter-title').textContent} จริงไหม?`)){ sec.remove(); renumberChapters(); } });
 
   function loadStoryToForm(story){
-    document.getElementById('title').value=story.title||''; document.getElementById('author').value=story.author||'';
-    document.getElementById('blurb').value=story.blurb||''; document.getElementById('inspiration').value=story.inspiration||'';
-    document.getElementById('characters').value=story.characters||''; document.getElementById('chapters').innerHTML='';
-    (story.chapters||[]).forEach(c=>addChapter(c)); if(!story.chapters||!story.chapters.length) addChapter('');
+    document.getElementById('title').value=story.title||'';
+    document.getElementById('author').value=story.author||'';
+    document.getElementById('blurb').value=story.blurb||'';
+    document.getElementById('inspiration').value=story.inspiration||'';
+    document.getElementById('characters').value=story.characters||'';
+    // ✅ ตั้งค่า category ที่โหลดมาจาก DB
+    if (story.category) {
+      const sel = document.getElementById('cat');
+      const opt = [...sel.options].find(o => o.value === story.category);
+      if (opt) sel.value = opt.value;
+    }
+    document.getElementById('chapters').innerHTML='';
+    (story.chapters||[]).forEach(c=>addChapter(c));
+    if(!story.chapters||!story.chapters.length) addChapter('');
   }
 
   const params=new URLSearchParams(location.search); const currentId=params.get('id');
@@ -229,15 +239,21 @@
     const blurb=document.getElementById('blurb').value.trim();
     const inspiration=document.getElementById('inspiration').value.trim();
     const characters=document.getElementById('characters').value.trim();
+    const category=document.getElementById('cat').value;   // ✅ เก็บหมวดหมู่
     const chapters=Array.from(document.querySelectorAll('.chapter-text')).map(t=>t.value);
 
     const now=Date.now(); let list=await loadStories(); let story;
     if(currentId){
       const idx=list.findIndex(s=>s.id===currentId);
-      if(idx>=0){ story={...list[idx], title, author, blurb, inspiration, characters, chapters, updatedAt:now}; list[idx]=story; }
-      else { story={id:currentId, title, author, blurb, inspiration, characters, chapters, updatedAt:now}; list.push(story); }
+      if(idx>=0){
+        story={...list[idx], title, author, blurb, inspiration, characters, category, chapters, updatedAt:now};
+        list[idx]=story;
+      } else {
+        story={id:currentId, title, author, blurb, inspiration, characters, category, chapters, updatedAt:now};
+        list.push(story);
+      }
     }else{
-      story={id:uid(), title, author, blurb, inspiration, characters, chapters, updatedAt:now};
+      story={id:uid(), title, author, blurb, inspiration, characters, category, chapters, updatedAt:now};
       list.push(story);
     }
     await saveStories(list);
@@ -245,13 +261,14 @@
     history.replaceState(null,'','write.html?id='+encodeURIComponent(story.id));
   });
 
-  // Export Word (ไม่เพี้ยน)
+  // ===== Export Word (ตามลำดับใหม่)
   document.getElementById('downloadBtn').addEventListener('click', ()=>{
-    const title=document.getElementById('title').value.trim()||'Untitled';
-    const author=document.getElementById('author').value.trim()||'';
-    const blurb=document.getElementById('blurb').value.trim()||'';
-    const inspiration=document.getElementById('inspiration').value.trim()||'';
-    const characters=document.getElementById('characters').value.trim()||'';
+    const title=(document.getElementById('title').value||'Untitled').trim();
+    const author=(document.getElementById('author').value||'').trim();
+    const category=(document.getElementById('cat').value||'').trim();        // ✅ ใช้หมวดหมู่
+    const inspiration=(document.getElementById('inspiration').value||'').trim();
+    const characters=(document.getElementById('characters').value||'').trim();
+    const blurb=(document.getElementById('blurb').value||'').trim();
     const chaptersEls=Array.from(document.querySelectorAll('.chapter-text'));
     const chapters=chaptersEls.map((t,i)=>({idx:i+1,text:t.value}));
 
@@ -259,20 +276,39 @@
       body{font-family:"TH Sarabun New","Cordia New","Leelawadee UI","Tahoma",sans-serif;color:#4B2E2E;font-size:14pt}
       h1{color:#C97381;font-size:26pt;margin:0 0 12pt 0} h2{font-size:20pt;margin:0 0 6pt 0}
       h3{font-size:16pt;margin:14pt 0 6pt 0;color:#6b3740} h4{font-size:14pt;margin:12pt 0 6pt 0;color:#8b4b51}
-      p{line-height:1.6;margin:0 0 10pt 0} .sep{text-align:center;color:#E49BAF;font-size:18pt;margin:10pt 0} .meta{color:#6b3740} .blurb{font-style:italic;color:#96685f}`;
+      p{line-height:1.6;margin:0 0 10pt 0} .sep{text-align:center;color:#E49BAF;font-size:18pt;margin:10pt 0}
+      .meta{color:#6b3740} .blurb{font-style:italic;color:#96685f} ul{margin:0 0 10pt 1.2em}`;
+
     const esc = t => (t+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+    // ทำ bullet จากตัวละคร (บรรทัดละ 1)
+    const charHtml = characters
+      ? `<ul>${characters.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`
+      : '';
+
+    // ✅ เรียงใหม่: ชื่อเรื่อง → หมวดหมู่ → แรงบันดาลใจ → ตัวละคร → คำโปรย → ตอน
     let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml">
       <head><meta charset="utf-8"/><title>My Sweet Story</title><style>${css}</style></head><body>
-      <h1>My Sweet Story</h1><h2>ชื่อเรื่อง : ${esc(title)}</h2>
-      <p class="meta">ผู้เขียน : ${esc(author)}</p><p class="meta">วันที่พิมพ์ : ${new Date().toLocaleDateString('th-TH')}</p>
-      ${blurb?`<p class="blurb">"${esc(blurb)}"</p>`:''}
+      <h1>My Sweet Story</h1>
+      <h2>ชื่อเรื่อง : ${esc(title)}</h2>
+      <p class="meta">ผู้เขียน : ${esc(author || "-")}</p>
+      ${category ? `<p class="meta">หมวดหมู่ : ${esc(category)}</p>` : ``}
+      <p class="meta">วันที่พิมพ์ : ${new Date().toLocaleDateString('th-TH')}</p>
+
+      ${inspiration ? `<h3>แรงบันดาลใจ 🍓</h3><p>${esc(inspiration).replace(/\n/g,'<br/>')}</p>` : ``}
+      ${charHtml ? `<h3>ตัวละคร 🧸</h3>${charHtml}` : ``}
+      ${blurb ? `<h3>คำโปรย ✨</h3><p class="blurb">"${esc(blurb)}"</p>` : ``}
+
+      <div class="sep">❋ ❋ ❋</div>
       ${chapters.map(c=>`<h3>— ตอนที่ ${c.idx} —</h3><p>${esc(c.text).replace(/\n/g,'<br/>')}</p><div class="sep">❋ ❋ ❋</div>`).join('')}
-      ${inspiration?`<h4>แรงบันดาลใจตอนนี้ 🍓</h4><p>${esc(inspiration).replace(/\n/g,'<br/>')}</p>`:''}
-      ${characters?`<h4>ตัวละครในตอนนี้ 🧸</h4><p>${esc(characters).replace(/\n/g,'<br/>')}</p>`:''}
       </body></html>`;
+
     const blob=new Blob([html],{type:"application/msword;charset=utf-8"});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(title.replace(/[^0-9a-zA-Zก-ฮ\s\-]/g,'')||'My_Sweet_Story')+'.doc'; a.click(); URL.revokeObjectURL(a.href);
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=(title.replace(/[^0-9a-zA-Zก-ฮ\s\-]/g,'')||'My_Sweet_Story')+'.doc';
+    a.click();
+    URL.revokeObjectURL(a.href);
   });
 
   document.getElementById('homeBtn').addEventListener('click',()=>location.href='index.html');
