@@ -99,26 +99,18 @@
     getFirestore, doc, getDocs, setDoc, collection, query, orderBy, deleteDoc, getDoc, collectionGroup
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-  apiKey: "AIzaSyBhPnXwOobpBPVaK6-sNsMCZ-pmz71OaHk",
-  authDomain: "plumeo-475aa.firebaseapp.com",
-  projectId: "plumeo-475aa",
-  storageBucket: "plumeo-475aa.firebasestorage.app",
-  messagingSenderId: "452998025243",
-  appId: "1:452998025243:web:27d16edb8360cda2cc711e",
-  measurementId: "G-ZFXVG7W436"
-};
-
-
-  const app = initializeApp(firebaseConfig);
+  /* ===== โหลด config จาก Firebase Hosting (เหมือนหน้า write) ===== */
+  const resp = await fetch("/__/firebase/init.json");
+  if (!resp.ok) {
+    console.error("Failed to load Firebase init.json", resp.status);
+    alert("โหลดการตั้งค่า Firebase ไม่สำเร็จ");
+  }
+  const firebaseConfig = await resp.json();
+  const app  = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getFirestore(app);
   const provider = new GoogleAuthProvider();
-
-  async function initAuth() {
-    await setPersistence(auth, browserLocalPersistence);
-  }
-  initAuth();
+  await setPersistence(auth, browserLocalPersistence);
 
   // === Auth UI ===
   const loginBtn   = document.getElementById('loginBtn');
@@ -180,10 +172,7 @@
         role: 'member',
         createdAt: Date.now()
       }, { merge: true });
-      try {
-        await sendEmailVerification(cred.user);
-        alert('ส่งลิงก์ยืนยันอีเมลแล้ว');
-      } catch {}
+      try { await sendEmailVerification(cred.user); } catch {}
       hideAuth();
     } catch (err) {
       alert(err.message || 'สมัครสมาชิกไม่สำเร็จ');
