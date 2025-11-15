@@ -139,21 +139,22 @@
     Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer, PageOrientation
   } from "https://cdn.jsdelivr.net/npm/docx@8.5.0/+esm";
 
-  /* ==== Firebase Config (auto from Hosting) ==== */
-  const resp = await fetch("/__/firebase/init.json");
-  if (!resp.ok) {
-  console.error("Failed to load Firebase init.json", resp.status);
-  alert("โหลดการตั้งค่า Firebase ไม่สำเร็จ");
-  }
-  const firebaseConfig = await resp.json();
+  /* ==== Firebase Config (ใช้ API key ใหม่เดียวกับ index) ==== */
+  const firebaseConfig = {
+    apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
+    authDomain: "plumeo-475aa.firebaseapp.com",
+    projectId: "plumeo-475aa",
+    storageBucket: "plumeo-475aa.firebasestorage.app",
+    messagingSenderId: "452998025243",
+    appId: "1:452998025243:web:27d16edb8360cda2cc711e",
+    measurementId: "G-ZFXVG7W436"
+  };
+
   const app = initializeApp(firebaseConfig);
-
-   /* ด้านล่างนี้คงไว้เหมือนเดิม */
-   const auth = getAuth(app);
-   const db = getFirestore(app);
-   const provider = new GoogleAuthProvider();
-   await setPersistence(auth, browserLocalPersistence);
-
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+  await setPersistence(auth, browserLocalPersistence);
 
   // ===== Auth UI =====
   const loginBtn=document.getElementById('loginBtn'), logoutBtn=document.getElementById('logoutBtn');
