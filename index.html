@@ -113,7 +113,7 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
-  async function initAuth() {
+ async function initAuth() {
   await setPersistence(auth, browserLocalPersistence);
 }
 initAuth();
