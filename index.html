@@ -99,13 +99,17 @@
     getFirestore, doc, getDocs, setDoc, collection, query, orderBy, deleteDoc, getDoc, collectionGroup
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  /* ===== โหลด config จาก Firebase Hosting (เหมือนหน้า write) ===== */
-  const resp = await fetch("/__/firebase/init.json");
-  if (!resp.ok) {
-    console.error("Failed to load Firebase init.json", resp.status);
-    alert("โหลดการตั้งค่า Firebase ไม่สำเร็จ");
-  }
-  const firebaseConfig = await resp.json();
+  /* ==== Firebase Config (กำหนดเองด้วย API key ใหม่) ==== */
+  const firebaseConfig = {
+    apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
+    authDomain: "plumeo-475aa.firebaseapp.com",
+    projectId: "plumeo-475aa",
+    storageBucket: "plumeo-475aa.firebasestorage.app",
+    messagingSenderId: "452998025243",
+    appId: "1:452998025243:web:27d16edb8360cda2cc711e",
+    measurementId: "G-ZFXVG7W436"
+  };
+
   const app  = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getFirestore(app);
