@@ -48,9 +48,9 @@
 <header>
   <div class="top-controls"><h1>🧁 My Sweet Story</h1></div>
   <div class="top-controls">
-    <!-- เริ่มต้นซ่อน ปุ่มพล็อต/เขียนเรื่องใหม่ ไว้ก่อน -->
+    <!-- เริ่มต้น: ซ่อนปุ่มพล็อต/เขียนเรื่องไว้ก่อน -->
     <button class="btn" id="plotBtn" style="display:none">📚 คลังพล็อตของฉัน</button>
-    <button class="btn" id="newBtn" style="display:none">✏️ เขียนเรื่องใหม่</button>
+    <button class="btn" id="newBtn"  style="display:none">✏️ เขียนเรื่องใหม่</button>
     <button class="btn" id="loginBtn">🔑 เข้าสู่ระบบ</button>
     <button class="btn" id="logoutBtn" style="display:none">🚪 ออกจากระบบ</button>
   </div>
@@ -112,7 +112,7 @@
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  const db   = getFirestore(app);
   const provider = new GoogleAuthProvider();
 
   async function initAuth() {
@@ -141,182 +141,192 @@
 
   loginBtn.addEventListener('click', showAuth);
   closeAuth.addEventListener('click', hideAuth);
-  logoutBtn.addEventListener('click', async()=>{
+
+  logoutBtn.addEventListener('click', async () => {
     await signOut(auth);
     location.reload();
   });
 
-  googleBtn.addEventListener('click', async()=>{
-    try{
+  googleBtn.addEventListener('click', async () => {
+    try {
       await signInWithPopup(auth, provider);
       hideAuth();
-    }catch(err){
+    } catch (err) {
       alert(err.message || 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
     }
   });
 
-  emailSignInBtn.addEventListener('click', async()=>{
-    const e=(emailInput.value||'').trim(), p=passInput.value||'';
-    if(!e||!p) return alert('กรอกอีเมลและรหัสผ่าน');
-    try{
-      await signInWithEmailAndPassword(auth,e,p);
+  emailSignInBtn.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim();
+    const p = passInput.value || '';
+    if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+    try {
+      await signInWithEmailAndPassword(auth, e, p);
       hideAuth();
-    }catch(err){
+    } catch (err) {
       alert(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
     }
   });
 
-  emailSignUpBtn.addEventListener('click', async()=>{
-    const e=(emailInput.value||'').trim(), p=passInput.value||'';
-    if(!e||!p) return alert('กรอกอีเมลและรหัสผ่าน');
-    try{
-      const cred = await createUserWithEmailAndPassword(auth,e,p);
-      await setDoc(doc(db,`users/${cred.user.uid}`), {
-        uid:cred.user.uid,
-        email:e,
-        role:'member',
-        createdAt:Date.now()
-      },{merge:true});
-      try{
+  emailSignUpBtn.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim();
+    const p = passInput.value || '';
+    if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, e, p);
+      await setDoc(doc(db, `users/${cred.user.uid}`), {
+        uid: cred.user.uid,
+        email: e,
+        role: 'member',
+        createdAt: Date.now()
+      }, { merge: true });
+      try {
         await sendEmailVerification(cred.user);
         alert('ส่งลิงก์ยืนยันอีเมลแล้ว');
-      }catch{}
+      } catch {}
       hideAuth();
-    }catch(err){
+    } catch (err) {
       alert(err.message || 'สมัครสมาชิกไม่สำเร็จ');
     }
   });
 
-  resetLink.addEventListener('click', async()=>{
-    const e=(emailInput.value||'').trim();
-    if(!e) return alert('ใส่อีเมลก่อน');
-    try{
-      await sendPasswordResetEmail(auth,e);
+  resetLink.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim();
+    if (!e) return alert('ใส่อีเมลก่อน');
+    try {
+      await sendPasswordResetEmail(auth, e);
       alert('ส่งอีเมลตั้งรหัสผ่านใหม่แล้ว');
-    }catch(err){
+    } catch (err) {
       alert(err.message || 'ส่งอีเมลไม่สำเร็จ');
     }
   });
 
-  verifyLink.addEventListener('click', async()=>{
-    if(!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
-    try{
+  verifyLink.addEventListener('click', async () => {
+    if (!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
+    try {
       await sendEmailVerification(auth.currentUser);
       alert('ส่งลิงก์ยืนยันแล้ว');
-    }catch(err){
+    } catch (err) {
       alert(err.message || 'ส่งลิงก์ไม่สำเร็จ');
     }
   });
 
   // === Data layer (admin เห็นทุกเรื่องด้วย collectionGroup) ===
-  async function loadStoriesCloud(){
+  async function loadStoriesCloud() {
     const token = auth.currentUser ? await auth.currentUser.getIdTokenResult(true) : null;
-    const role = token?.claims?.role || 'member';
+    const role  = token?.claims?.role || 'member';
     window.__currentRole = role;
 
-    if(role === 'admin'){
-      const q = query(collectionGroup(db,'stories'), orderBy('updatedAt','desc'));
+    if (role === 'admin') {
+      const q = query(collectionGroup(db, 'stories'), orderBy('updatedAt', 'desc'));
       const snap = await getDocs(q);
-      const list=[];
-      snap.forEach(d=>list.push(d.data()));
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
       return list;
-    }else{
-      const q = query(collection(db,`users/${auth.currentUser.uid}/stories`), orderBy('updatedAt','desc'));
+    } else if (auth.currentUser) {
+      const q = query(collection(db, `users/${auth.currentUser.uid}/stories`), orderBy('updatedAt', 'desc'));
       const snap = await getDocs(q);
-      const list=[];
-      snap.forEach(d=>list.push(d.data()));
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
       return list;
+    } else {
+      return [];
     }
   }
 
-  async function deleteStoryCloud(id){
-    if(window.__currentRole==='admin'){
+  async function deleteStoryCloud(id) {
+    if (window.__currentRole === 'admin') {
       alert('สำหรับลบข้ามผู้ใช้ แนะนำเพิ่มฟิลด์ ownerId ที่เอกสาร แล้วเขียนปุ่มลบให้รู้ ownerId ก่อนครับ');
-    }else{
-      await deleteDoc(doc(db,`users/${auth.currentUser.uid}/stories/${id}`));
+    } else {
+      await deleteDoc(doc(db, `users/${auth.currentUser.uid}/stories/${id}`));
     }
   }
 
   window.MyCloud = {
-    async loadStories(){ return auth.currentUser ? await loadStoriesCloud() : []; },
-    async deleteStory(id){ return auth.currentUser ? await deleteStoryCloud(id) : null; }
+    async loadStories() { return auth.currentUser ? await loadStoriesCloud() : []; },
+    async deleteStory(id) { return auth.currentUser ? await deleteStoryCloud(id) : null; }
   };
 
-  onAuthStateChanged(auth, async (user)=>{
-    if(user){
-      // แสดงปุ่มสำหรับคนที่ล็อกอินแล้ว
-      loginBtn.style.display='none';
-      logoutBtn.style.display='inline-block';
-      plotBtn.style.display='inline-block';
-      newBtn.style.display='inline-block';
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // ล็อกอินแล้ว
+      loginBtn.style.display  = 'none';
+      logoutBtn.style.display = 'inline-block';
+      plotBtn.style.display   = 'inline-block';
+      newBtn.style.display    = 'inline-block';
 
       // สร้างโปรไฟล์ถ้ายังไม่มี
-      const profRef = doc(db,`users/${user.uid}`);
+      const profRef  = doc(db, `users/${user.uid}`);
       const profSnap = await getDoc(profRef);
-      if(!profSnap.exists()){
-        await setDoc(profRef,{
-          uid:user.uid,
-          email:user.email||'',
-          role:'member',
-          createdAt:Date.now()
-        },{merge:true});
+      if (!profSnap.exists()) {
+        await setDoc(profRef, {
+          uid: user.uid,
+          email: user.email || '',
+          role: 'member',
+          createdAt: Date.now()
+        }, { merge: true });
       }
-    }else{
-      // ยังไม่ล็อกอิน → ซ่อนปุ่มใช้งานต่าง ๆ
-      loginBtn.style.display='inline-block';
-      logoutBtn.style.display='none';
-      plotBtn.style.display='none';
-      newBtn.style.display='none';
+    } else {
+      // ยังไม่ล็อกอิน
+      loginBtn.style.display  = 'inline-block';
+      logoutBtn.style.display = 'none';
+      plotBtn.style.display   = 'none';
+      newBtn.style.display    = 'none';
     }
+
     renderList();
   });
 
   // === UI list ===
-  async function renderList(){
+  async function renderList() {
     const container = document.getElementById('storiesList');
-    container.innerHTML='';
+    container.innerHTML = '';
     const list = await window.MyCloud.loadStories();
-    if(!list.length){
-      document.getElementById('emptyMsg').style.display='block';
+    if (!list.length) {
+      document.getElementById('emptyMsg').style.display = 'block';
       return;
     }
-    document.getElementById('emptyMsg').style.display='none';
+    document.getElementById('emptyMsg').style.display = 'none';
 
     // ถ้าเป็นแอดมิน แปะ badge
-    if(window.__currentRole==='admin'){
+    if (window.__currentRole === 'admin') {
       const badge = document.getElementById('roleBadge');
-      if(badge) badge.textContent = '⭐ Admin Mode';
+      if (badge) badge.textContent = '⭐ Admin Mode';
     }
 
-    list.forEach(item=>{
+    list.forEach(item => {
       const card = document.createElement('div');
-      card.className='card';
+      card.className = 'card';
 
       const title = document.createElement('h3');
       title.textContent = item.title || 'Untitled';
 
       const meta = document.createElement('div');
-      meta.className='meta';
-      const date = new Date(item.updatedAt||Date.now());
-      meta.textContent = 'บันทึกล่าสุด: '+date.toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
+      meta.className = 'meta';
+      const date = new Date(item.updatedAt || Date.now());
+      meta.textContent = 'บันทึกล่าสุด: ' +
+        date.toLocaleDateString('th-TH', { year:'numeric', month:'short', day:'numeric' });
 
       const excerpt = document.createElement('div');
       excerpt.textContent = item.blurb || '';
 
       const actions = document.createElement('div');
-      actions.className='card-actions';
+      actions.className = 'card-actions';
 
       const openBtn = document.createElement('button');
-      openBtn.className='small-btn';
-      openBtn.textContent='เปิดต่อ';
-      openBtn.onclick = ()=> location.href='write.html?id='+encodeURIComponent(item.id)+(item.ownerId?`&owner=${encodeURIComponent(item.ownerId)}`:'');
+      openBtn.className = 'small-btn';
+      openBtn.textContent = 'เปิดต่อ';
+      openBtn.onclick = () => {
+        location.href = 'write.html?id=' + encodeURIComponent(item.id) +
+          (item.ownerId ? `&owner=${encodeURIComponent(item.ownerId)}` : '');
+      };
 
       const delBtn = document.createElement('button');
-      delBtn.className='small-btn';
-      delBtn.style.background='#e68b9a';
-      delBtn.textContent='ลบ';
-      delBtn.onclick = async()=>{
-        if(confirm(ลบเรื่อง "${item.title || 'Untitled'}"?)){
+      delBtn.className = 'small-btn';
+      delBtn.style.background = '#e68b9a';
+      delBtn.textContent = 'ลบ';
+      delBtn.onclick = async () => {
+        if (confirm(`ลบเรื่อง "${item.title || 'Untitled'}"?`)) {
           await window.MyCloud.deleteStory(item.id);
           await renderList();
         }
@@ -329,8 +339,8 @@
   }
 
   // ปุ่มนำทาง
-  plotBtn.addEventListener('click', ()=> location.href='plot_library.html');
-  newBtn.addEventListener('click',  ()=> location.href='write.html');
+  plotBtn.addEventListener('click', () => location.href = 'plot_library.html');
+  newBtn.addEventListener('click',  () => location.href = 'write.html');
 
   // เรียกครั้งแรก (กรณียังไม่ได้ authState)
   renderList();
