@@ -100,7 +100,7 @@
     query, orderBy, deleteDoc, getDoc, collectionGroup
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  // ===== Firebase config (ใช้ apiKey ใหม่) =====
+  // ===== Firebase config (ใช้ตัวเดียวกับทุกหน้า) =====
   const firebaseConfig = {
     apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
     authDomain: "plumeo-475aa.firebaseapp.com",
@@ -111,13 +111,11 @@
     measurementId: "G-ZFXVG7W436"
   };
 
-  // สร้าง app / auth / db
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getFirestore(app);
   const provider = new GoogleAuthProvider();
 
-  // ===== DOM refs =====
   const loginBtn   = document.getElementById("loginBtn");
   const logoutBtn  = document.getElementById("logoutBtn");
   const plotBtn    = document.getElementById("plotBtn");
@@ -136,7 +134,6 @@
   const showAuth = () => { backdrop.style.display = "flex"; };
   const hideAuth = () => { backdrop.style.display = "none"; };
 
-  // ===== ฟังก์ชันโหลด/ลบจาก Cloud =====
   async function loadStoriesCloud() {
     const user = auth.currentUser;
     if (!user) return [];
@@ -145,13 +142,12 @@
     const role  = token?.claims?.role || "member";
     window.__currentRole = role;
 
-    // helper แปลง snapshot → array (ใช้ doc.id เป็น id เสมอ)
     const mapSnap = (snap) => {
-      const list = [];
+      const arr = [];
       snap.forEach(d => {
-        list.push({ id: d.id, ...d.data() });
+        arr.push({ id: d.id, ...d.data() });   // << ใช้ doc.id เป็น id เสมอ
       });
-      return list;
+      return arr;
     };
 
     if (role === "admin") {
@@ -180,13 +176,22 @@
     async deleteStory(id){ return auth.currentUser ? await deleteStoryCloud(id) : null; }
   };
 
-  // ===== แสดง list การ์ด =====
   async function renderList() {
     const container = document.getElementById("storiesList");
     const emptyMsg  = document.getElementById("emptyMsg");
     container.innerHTML = "";
 
-    const list = await window.MyCloud.loadStories();
+    const rawList = await window.MyCloud.loadStories();
+
+    // ---- กันเรื่องซ้ำ: ใช้ id เป็นตัวตัดสิน ----
+    const seen = new Set();
+    const list = [];
+    for (const item of rawList) {
+      if (!item.id) continue;
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      list.push(item);
+    }
 
     if (!list.length) {
       emptyMsg.style.display = "block";
@@ -243,9 +248,7 @@
     });
   }
 
-  // ===== main init =====
   async function init() {
-    // ให้จำ session ไว้
     await setPersistence(auth, browserLocalPersistence);
 
     // ปุ่ม modal
@@ -318,7 +321,6 @@
       }
     });
 
-    // สถานะล็อกอิน
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         loginBtn.style.display  = "none";
@@ -346,16 +348,14 @@
       await renderList();
     });
 
-    // ปุ่มนำทาง
+    // ปุ่มไปหน้าอื่น
     plotBtn.addEventListener("click", () => location.href = "plot_library.html");
     newBtn.addEventListener("click",  () => location.href = "write.html");
-
-    // เผื่อกรณี onAuthStateChanged ยังไม่ยิง
-    await renderList();
   }
 
   init();
 </script>
+
 
 
 
