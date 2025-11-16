@@ -96,10 +96,10 @@
     sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
   import {
-    getFirestore, doc, getDocs, setDoc, collection, query, orderBy, deleteDoc, getDoc, collectionGroup
+    getFirestore, doc, getDocs, setDoc, collection, query, orderBy, deleteDoc, getDoc
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  /* ==== Firebase Config (กำหนดเองด้วย API key ใหม่) ==== */
+  /* ==== Firebase Config (ของ plumeo-475aa) ==== */
   const firebaseConfig = {
     apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
     authDomain: "plumeo-475aa.firebaseapp.com",
@@ -114,9 +114,10 @@
   const auth = getAuth(app);
   const db   = getFirestore(app);
   const provider = new GoogleAuthProvider();
+
   await setPersistence(auth, browserLocalPersistence);
 
-  // === Auth UI ===
+  // ====== DOM ======
   const loginBtn   = document.getElementById('loginBtn');
   const logoutBtn  = document.getElementById('logoutBtn');
   const plotBtn    = document.getElementById('plotBtn');
@@ -131,10 +132,15 @@
   const resetLink      = document.getElementById('resetLink');
   const verifyLink     = document.getElementById('verifyLink');
   const closeAuth      = document.getElementById('closeAuth');
+  const roleBadge      = document.getElementById('roleBadge');
 
-  const showAuth = () => backdrop.style.display='flex';
-  const hideAuth = () => backdrop.style.display='none';
+  const storiesListEl  = document.getElementById('storiesList');
+  const emptyMsgEl     = document.getElementById('emptyMsg');
 
+  const showAuth = () => backdrop.style.display = 'flex';
+  const hideAuth = () => backdrop.style.display = 'none';
+
+  // ====== Auth UI events ======
   loginBtn.addEventListener('click', showAuth);
   closeAuth.addEventListener('click', hideAuth);
 
@@ -204,113 +210,48 @@
     }
   });
 
-  // === Data layer (admin เห็นทุกเรื่องด้วย collectionGroup) ===
-  async function loadStoriesCloud() {
-  const token = auth.currentUser ? await auth.currentUser.getIdTokenResult(true) : null;
-  const role  = token?.claims?.role || 'member';
-  window.__currentRole = role;
+  // ====== Firestore helpers ======
+  function userStoriesColRef(uid) {
+    return collection(db, `users/${uid}/stories`);
+  }
 
-  // helper แปลง snapshot → array พร้อม doc.id
-  const mapSnap = (snap) => {
+  async function fetchStoriesForCurrentUser() {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const q = query(userStoriesColRef(user.uid), orderBy('updatedAt', 'desc'));
+    const snap = await getDocs(q);
     const list = [];
     snap.forEach(d => {
       list.push({ id: d.id, ...d.data() });
     });
+    console.log('stories from Firestore =', list.length, list);
     return list;
-  };
-
-  if (role === 'admin') {
-    const q = query(collectionGroup(db, 'stories'), orderBy('updatedAt', 'desc'));
-    const snap = await getDocs(q);
-    return mapSnap(snap);
-  } else if (auth.currentUser) {
-    const q = query(collection(db, `users/${auth.currentUser.uid}/stories`), orderBy('updatedAt', 'desc'));
-    const snap = await getDocs(q);
-    return mapSnap(snap);
-  } else {
-    return [];
-  }
-}
-
-
-  async function deleteStoryCloud(id) {
-    if (window.__currentRole === 'admin') {
-      alert('สำหรับลบข้ามผู้ใช้ แนะนำเพิ่มฟิลด์ ownerId ที่เอกสาร แล้วเขียนปุ่มลบให้รู้ ownerId ก่อนครับ');
-    } else {
-      await deleteDoc(doc(db, `users/${auth.currentUser.uid}/stories/${id}`));
-    }
   }
 
-  window.MyCloud = {
-    async loadStories() { return auth.currentUser ? await loadStoriesCloud() : []; },
-    async deleteStory(id) { return auth.currentUser ? await deleteStoryCloud(id) : null; }
-  };
+  async function deleteStoryForCurrentUser(id) {
+    const user = auth.currentUser;
+    if (!user) return;
+    await deleteDoc(doc(db, `users/${user.uid}/stories/${id}`));
+  }
 
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      // ล็อกอินแล้ว
-      loginBtn.style.display  = 'none';
-      logoutBtn.style.display = 'inline-block';
-      plotBtn.style.display   = 'inline-block';
-      newBtn.style.display    = 'inline-block';
-
-      // สร้างโปรไฟล์ถ้ายังไม่มี
-      const profRef  = doc(db, `users/${user.uid}`);
-      const profSnap = await getDoc(profRef);
-      if (!profSnap.exists()) {
-        await setDoc(profRef, {
-          uid: user.uid,
-          email: user.email || '',
-          role: 'member',
-          createdAt: Date.now()
-        }, { merge: true });
-      }
-    } else {
-      // ยังไม่ล็อกอิน
-      loginBtn.style.display  = 'inline-block';
-      logoutBtn.style.display = 'none';
-      plotBtn.style.display   = 'none';
-      newBtn.style.display    = 'none';
-    }
-
-    renderList();
-  });
-
-  // === UI list ===
-    // === UI list ===
+  // ====== Render list (แสดงทีเดียวต่อตัวจริงใน Firestore) ======
   async function renderList() {
-    const container = document.getElementById('storiesList');
-    container.innerHTML = '';
+    storiesListEl.innerHTML = '';
 
-    const rawList = await window.MyCloud.loadStories();
-
-    // --- กรองไม่ให้ขึ้นซ้ำ ---
-    // ใช้คีย์จาก title + blurb + วันที่อัปเดต (ตัดให้ละเอียดพอสมควร)
-    const seen = new Set();
-    const list = [];
-    for (const item of rawList) {
-      const key = [
-        (item.title || '').trim(),
-        (item.blurb || '').trim(),
-        new Date(item.updatedAt || 0).toISOString().slice(0, 10) // เฉพาะวัน
-      ].join('|');
-
-      if (seen.has(key)) continue; // ถ้าเคยเจอแล้วข้าม
-      seen.add(key);
-      list.push(item);
-    }
-
-    if (!list.length) {
-      document.getElementById('emptyMsg').style.display = 'block';
+    const user = auth.currentUser;
+    if (!user) {
+      emptyMsgEl.style.display = 'block';
       return;
     }
-    document.getElementById('emptyMsg').style.display = 'none';
 
-    // ถ้าเป็นแอดมิน แปะ badge
-    if (window.__currentRole === 'admin') {
-      const badge = document.getElementById('roleBadge');
-      if (badge) badge.textContent = '⭐ Admin Mode';
+    const list = await fetchStoriesForCurrentUser();
+
+    if (!list.length) {
+      emptyMsgEl.style.display = 'block';
+      return;
     }
+    emptyMsgEl.style.display = 'none';
 
     list.forEach(item => {
       const card = document.createElement('div');
@@ -335,8 +276,7 @@
       openBtn.className = 'small-btn';
       openBtn.textContent = 'เปิดต่อ';
       openBtn.onclick = () => {
-        location.href = 'write.html?id=' + encodeURIComponent(item.id) +
-          (item.ownerId ? `&owner=${encodeURIComponent(item.ownerId)}` : '');
+        location.href = 'write.html?id=' + encodeURIComponent(item.id);
       };
 
       const delBtn = document.createElement('button');
@@ -345,24 +285,58 @@
       delBtn.textContent = 'ลบ';
       delBtn.onclick = async () => {
         if (confirm(`ลบเรื่อง "${item.title || 'Untitled'}"?`)) {
-          await window.MyCloud.deleteStory(item.id);
+          await deleteStoryForCurrentUser(item.id);
           await renderList();
         }
       };
 
       actions.append(openBtn, delBtn);
       card.append(title, meta, excerpt, actions);
-      container.appendChild(card);
+      storiesListEl.appendChild(card);
     });
   }
 
+  // ====== Auth state ======
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      loginBtn.style.display  = 'none';
+      logoutBtn.style.display = 'inline-block';
+      plotBtn.style.display   = 'inline-block';
+      newBtn.style.display    = 'inline-block';
+
+      // สร้างโปรไฟล์ถ้ายังไม่มี
+      const profRef  = doc(db, `users/${user.uid}`);
+      const profSnap = await getDoc(profRef);
+      if (!profSnap.exists()) {
+        await setDoc(profRef, {
+          uid: user.uid,
+          email: user.email || '',
+          role: 'member',
+          createdAt: Date.now()
+        }, { merge: true });
+      }
+
+      if (roleBadge) roleBadge.textContent = ''; // ไว้ค่อยทำโหมด admin ทีหลัง
+      await renderList();
+    } else {
+      loginBtn.style.display  = 'inline-block';
+      logoutBtn.style.display = 'none';
+      plotBtn.style.display   = 'none';
+      newBtn.style.display    = 'none';
+      if (roleBadge) roleBadge.textContent = '';
+
+      storiesListEl.innerHTML = '';
+      emptyMsgEl.style.display = 'block';
+      showAuth();
+    }
+  });
 
   // ปุ่มนำทาง
   plotBtn.addEventListener('click', () => location.href = 'plot_library.html');
   newBtn.addEventListener('click',  () => location.href = 'write.html');
 
-  // เรียกครั้งแรก (กรณียังไม่ได้ authState)
-  renderList();
+  // ❌ ไม่ต้องเรียก renderList() ตรงนี้แล้ว
 </script>
+
 </body>
 </html>
