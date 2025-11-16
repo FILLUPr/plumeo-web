@@ -123,7 +123,6 @@
 
 <!-- Firebase + Editor + Export .docx -->
 <script type="module">
-  /* Firebase */
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
   import {
     getAuth, GoogleAuthProvider, signInWithPopup, signOut,
@@ -131,35 +130,32 @@
     sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, deleteDoc
+    getFirestore, doc, getDocs, setDoc, collection, query, orderBy, getDoc, deleteDoc
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-  /* docx (สำหรับ .docx) */
   import {
     Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer, PageOrientation
   } from "https://cdn.jsdelivr.net/npm/docx@8.5.0/+esm";
 
-  /* ==== Firebase Config (auto from Hosting) ==== */
-  const resp = await fetch("/__/firebase/init.json");
-  if (!resp.ok) {
-    console.error("Failed to load Firebase init.json", resp.status);
-    alert("โหลดการตั้งค่า Firebase ไม่สำเร็จ");
-  }
-  const firebaseConfig = await resp.json();
-  const app = initializeApp(firebaseConfig);
+  const firebaseConfig = {
+    apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
+    authDomain: "plumeo-475aa.firebaseapp.com",
+    projectId: "plumeo-475aa",
+    storageBucket: "plumeo-475aa.firebasestorage.app",
+    messagingSenderId: "452998025243",
+    appId: "1:452998025243:web:27d16edb8360cda2cc711e",
+    measurementId: "G-ZFXVG7W436"
+  };
 
+  const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getFirestore(app);
   const provider = new GoogleAuthProvider();
-  await setPersistence(auth, browserLocalPersistence);
 
-  // ===== Auth UI =====
-  const loginBtn  = document.getElementById('loginBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-  const backdrop  = document.getElementById('authBackdrop');
-  const emailInput= document.getElementById('authEmail');
-  const passInput = document.getElementById('authPassword');
-
+  const loginBtn   = document.getElementById('loginBtn');
+  const logoutBtn  = document.getElementById('logoutBtn');
+  const backdrop   = document.getElementById('authBackdrop');
+  const emailInput = document.getElementById('authEmail');
+  const passInput  = document.getElementById('authPassword');
   const emailSignInBtn = document.getElementById('emailSignInBtn');
   const emailSignUpBtn = document.getElementById('emailSignUpBtn');
   const googleBtn      = document.getElementById('googleBtn');
@@ -167,201 +163,97 @@
   const verifyLink     = document.getElementById('verifyLink');
   const closeAuth      = document.getElementById('closeAuth');
 
-  const showAuth = () => backdrop.style.display = 'flex';
-  const hideAuth = () => backdrop.style.display = 'none';
+  const saveBtn     = document.getElementById('saveBtn');
+  const homeBtn     = document.getElementById('homeBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
 
-  loginBtn.addEventListener('click', showAuth);
-  closeAuth.addEventListener('click', hideAuth);
+  const showAuth = () => { backdrop.style.display = 'flex'; };
+  const hideAuth = () => { backdrop.style.display = 'none'; };
 
-  logoutBtn.addEventListener('click', async () => {
-    await signOut(auth);
-    location.reload();
-  });
-
-  googleBtn.addEventListener('click', async () => {
-    await signInWithPopup(auth, provider);
-    hideAuth();
-  });
-
-  emailSignInBtn.addEventListener('click', async () => {
-    const e = (emailInput.value || '').trim();
-    const p = passInput.value || '';
-    if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
-    await signInWithEmailAndPassword(auth, e, p);
-    hideAuth();
-  });
-
-  emailSignUpBtn.addEventListener('click', async () => {
-    const e = (emailInput.value || '').trim();
-    const p = passInput.value || '';
-    if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
-    const cred = await createUserWithEmailAndPassword(auth, e, p);
-    await setDoc(
-      doc(db, `users/${cred.user.uid}`),
-      { uid: cred.user.uid, email: e, role: 'member', createdAt: Date.now() },
-      { merge: true }
-    );
-    try { await sendEmailVerification(cred.user); } catch {}
-    hideAuth();
-  });
-
-  resetLink.addEventListener('click', async () => {
-    const e = (emailInput.value || '').trim();
-    if (!e) return alert('ใส่อีเมลก่อน');
-    await sendPasswordResetEmail(auth, e);
-    alert('ส่งลิงก์รีเซ็ตรหัสผ่านแล้ว');
-  });
-
-  verifyLink.addEventListener('click', async () => {
-    if (!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
-    await sendEmailVerification(auth.currentUser);
-    alert('ส่งลิงก์ยืนยันแล้ว');
-  });
-
-  // ===== Editor helpers =====
-  const params    = new URLSearchParams(location.search);
-  let currentId   = params.get('id') || null;
-
-  function uid() {
-    return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  function uid(){
+    return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
   }
 
-  function addChapter(content) {
-    const idx  = document.querySelectorAll('#chapters .section.chapter').length + 1;
+  function addChapter(content){
+    const idx = document.querySelectorAll('#chapters .section.chapter').length + 1;
     const wrap = document.createElement('div');
-    wrap.className   = 'section chapter';
+    wrap.className = 'section chapter';
     wrap.dataset.index = String(idx);
-    wrap.innerHTML =
-      `<div class="chapter-header">
-         <div class="chapter-title">ตอนที่ ${idx} 🍰</div>
-         <button class="small danger remove-chapter">🗑️ ลบตอนนี้</button>
-       </div>
-       <textarea class="chapter-text" placeholder="พิมพ์เนื้อหาตอนที่ ${idx}...">${content || ''}</textarea>`;
+    wrap.innerHTML = `
+      <div class="chapter-header">
+        <div class="chapter-title">ตอนที่ ${idx} 🍰</div>
+        <button class="small danger remove-chapter">🗑️ ลบตอนนี้</button>
+      </div>
+      <textarea class="chapter-text" placeholder="พิมพ์เนื้อหาตอนที่ ${idx}...">${content || ''}</textarea>
+    `;
     document.getElementById('chapters').appendChild(wrap);
   }
 
-  function renumberChapters() {
-    Array.from(document.querySelectorAll('#chapters .section.chapter')).forEach((n, i) => {
-      n.dataset.index = String(i + 1);
-      n.querySelector('.chapter-title').textContent =
-        `ตอนที่ ${i + 1} 🍰`;
-      n.querySelector('.chapter-text').placeholder =
-        `พิมพ์เนื้อหาตอนที่ ${i + 1}...`;
+  function renumberChapters(){
+    Array.from(document.querySelectorAll('#chapters .section.chapter')).forEach((n,i)=>{
+      n.dataset.index = String(i+1);
+      n.querySelector('.chapter-title').textContent = `ตอนที่ ${i+1} 🍰`;
+      n.querySelector('.chapter-text').placeholder   = `พิมพ์เนื้อหาตอนที่ ${i+1}...`;
     });
   }
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', (e)=>{
     const btn = e.target.closest('.remove-chapter');
     if (!btn) return;
     const sec = btn.closest('.section.chapter');
     if (!sec) return;
-    if (confirm(`ลบ${sec.querySelector('.chapter-title').textContent} จริงไหม?`)) {
+    if (confirm(`ลบ${sec.querySelector('.chapter-title').textContent} จริงไหม?`)){
       sec.remove();
       renumberChapters();
     }
   });
 
-  function loadStoryToForm(story) {
-    document.getElementById('title').value        = story.title        || '';
-    document.getElementById('author').value       = story.author       || '';
-    document.getElementById('blurb').value        = story.blurb        || '';
-    document.getElementById('inspiration').value  = story.inspiration  || '';
-    document.getElementById('characters').value   = story.characters   || '';
-
+  function loadStoryToForm(story){
+    document.getElementById('title').value        = story.title || '';
+    document.getElementById('author').value       = story.author || '';
+    document.getElementById('blurb').value        = story.blurb || '';
+    document.getElementById('inspiration').value  = story.inspiration || '';
+    document.getElementById('characters').value   = story.characters || '';
     if (story.category) {
       const sel = document.getElementById('cat');
-      const opt = [...sel.options].find(o => o.value === story.category || o.text === story.category);
+      const opt = [...sel.options].find(o => o.value === story.category);
       if (opt) sel.value = opt.value;
     }
-
     document.getElementById('chapters').innerHTML = '';
     (story.chapters || []).forEach(c => addChapter(c));
     if (!story.chapters || !story.chapters.length) addChapter('');
   }
 
-  async function loadCurrentStory(user) {
-    if (!currentId) {
-      addChapter('');
-      return;
-    }
-    const ref  = doc(db, `users/${user.uid}/stories/${currentId}`);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      loadStoryToForm(snap.data());
+  const params    = new URLSearchParams(location.search);
+  const currentId = params.get('id');
+
+  async function loadStories(){
+    const q    = query(collection(db, `users/${auth.currentUser.uid}/stories`), orderBy('updatedAt','desc'));
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach(d => list.push({ id: d.id, ...d.data() }));   // << เก็บ id จาก doc.id
+    return list;
+  }
+
+  async function saveStories(list){
+    const tasks = list.map(s =>
+      setDoc(doc(db, `users/${auth.currentUser.uid}/stories/${s.id}`), s, { merge:true })
+    );
+    await Promise.all(tasks);
+  }
+
+  async function initEditor(){
+    if (currentId){
+      const list  = await loadStories();
+      const found = list.find(s => s.id === currentId);
+      if (found) loadStoryToForm(found);
+      else addChapter('');
     } else {
       addChapter('');
     }
   }
 
-  // ===== บังคับล็อกอินก่อนใช้งาน editor =====
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      loginBtn.style.display  = 'none';
-      logoutBtn.style.display = 'inline-block';
-
-      const profRef  = doc(db, `users/${user.uid}`);
-      const profSnap = await getDoc(profRef);
-      if (!profSnap.exists()) {
-        await setDoc(
-          profRef,
-          { uid: user.uid, email: user.email || '', role: 'member', createdAt: Date.now() },
-          { merge: true }
-        );
-      }
-      await loadCurrentStory(user);
-    } else {
-      loginBtn.style.display  = 'inline-block';
-      logoutBtn.style.display = 'none';
-      showAuth();
-    }
-  });
-
-  // ปุ่มเพิ่มตอน + กลับหน้าหลัก
-  document.getElementById('addChapterBtn')
-    .addEventListener('click', () => addChapter(''));
-  document.getElementById('homeBtn')
-    .addEventListener('click', () => location.href = 'index.html');
-
-  // ===== บันทึกทีละ document (ไม่ยุ่งกับ list ทั้งหมดแล้ว) =====
-  document.getElementById('saveBtn').addEventListener('click', async () => {
-    if (!auth.currentUser) {
-      showAuth();
-      return;
-    }
-
-    const title        = document.getElementById('title').value.trim() || 'Untitled';
-    const author       = document.getElementById('author').value.trim();
-    const blurb        = document.getElementById('blurb').value.trim();
-    const inspiration  = document.getElementById('inspiration').value.trim();
-    const characters   = document.getElementById('characters').value.trim();
-    const category     = document.getElementById('cat').value;
-    const chapters     = Array.from(
-      document.querySelectorAll('.chapter-text')
-    ).map(t => t.value);
-
-    const now = Date.now();
-    if (!currentId) currentId = uid();  // เรื่องใหม่ → สร้าง id ใหม่
-
-    const story = {
-      id: currentId,
-      title,
-      author,
-      blurb,
-      inspiration,
-      characters,
-      category,
-      chapters,
-      updatedAt: now,
-    };
-
-    const ref = doc(db, `users/${auth.currentUser.uid}/stories/${currentId}`);
-    await setDoc(ref, story, { merge: true });
-
-    alert('บันทึกเรียบร้อย ❤️');
-    history.replaceState(null, '', 'write.html?id=' + encodeURIComponent(currentId));
-  });
-
-  // ===== Export Word (.docx) =====
+  // ===== Export DOCX helper (เหมือนเดิม) =====
   const H1 = (text) => new Paragraph({
     children: [new TextRun({ text, bold: true })],
     heading: HeadingLevel.HEADING_1,
@@ -378,11 +270,7 @@
       spacing: { after },
       children: [new TextRun({ text })]
     });
-  const Bullet = (text) => new Paragraph({
-    text,
-    bullet: { level: 0 },
-    spacing: { after: 80 }
-  });
+  const Bullet = (text) => new Paragraph({ text, bullet: { level: 0 }, spacing: { after: 80 } });
 
   function buildDocFromForm() {
     const title       = (document.getElementById('title').value || 'Untitled').trim();
@@ -399,25 +287,16 @@
     children.push(H1('My Sweet Story'));
     children.push(new Paragraph({
       spacing: { after: 200 },
-      children: [
-        new TextRun({ text: 'ชื่อเรื่อง : ', bold: true }),
-        new TextRun({ text: title }),
-      ],
+      children: [ new TextRun({ text: 'ชื่อเรื่อง : ', bold: true }), new TextRun({ text: title }) ],
     }));
     children.push(new Paragraph({
       spacing: { after: 80 },
-      children: [
-        new TextRun({ text: 'ผู้เขียน : ', bold: true }),
-        new TextRun({ text: author || '-' }),
-      ],
+      children: [ new TextRun({ text: 'ผู้เขียน : ', bold: true }), new TextRun({ text: author || '-' }) ],
     }));
     if (category) {
       children.push(new Paragraph({
         spacing: { after: 80 },
-        children: [
-          new TextRun({ text: 'หมวดหมู่ : ', bold: true }),
-          new TextRun({ text: category }),
-        ],
+        children: [ new TextRun({ text: 'หมวดหมู่ : ', bold: true }), new TextRun({ text: category }) ],
       }));
     }
     children.push(P(`วันที่พิมพ์ : ${new Date().toLocaleDateString('th-TH')}`, { after: 200 }));
@@ -437,7 +316,7 @@
       children.push(H2('คำโปรย ✨'));
       children.push(new Paragraph({
         spacing: { after: 160 },
-        children: [new TextRun({ text: `"${blurb}"`, italics: true })],
+        children: [ new TextRun({ text: `"${blurb}"`, italics: true }) ],
       }));
     }
 
@@ -453,7 +332,7 @@
         properties: {
           page: {
             margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
-            size:   { orientation: PageOrientation.PORTRAIT },
+            size: { orientation: PageOrientation.PORTRAIT },
           },
         },
         children,
@@ -467,25 +346,135 @@
     const blob  = await Packer.toBlob(doc);
     const url   = URL.createObjectURL(blob);
     const a     = document.createElement('a');
-    a.href      = url;
-    a.download  = `${title}.docx`;
+    a.href = url;
+    a.download = `${title}.docx`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
   }
 
-  document.getElementById('downloadBtn').addEventListener('click', () => {
-    const t = (document.getElementById('title').value || '').trim();
-    if (!t) {
-      if (!confirm('ยังไม่ได้ใส่ชื่อเรื่อง ต้องการดาวน์โหลดไฟล์ชื่อ MySweetStory.docx ไหม?')) return;
-    }
-    downloadDocxFromForm().catch(err => {
-      console.error(err);
-      alert('Export .docx ผิดพลาด');
+  async function init() {
+    await setPersistence(auth, browserLocalPersistence);
+
+    loginBtn.addEventListener('click', showAuth);
+    closeAuth.addEventListener('click', hideAuth);
+    logoutBtn.addEventListener('click', async()=>{ await signOut(auth); location.reload(); });
+
+    googleBtn.addEventListener('click', async()=>{
+      await signInWithPopup(auth,provider);
+      hideAuth();
     });
-  });
+
+    emailSignInBtn.addEventListener('click',async()=>{
+      const e=(emailInput.value||'').trim(), p=passInput.value||'';
+      if(!e||!p) return alert('กรอกอีเมลและรหัสผ่าน');
+      await signInWithEmailAndPassword(auth,e,p);
+      hideAuth();
+    });
+
+    emailSignUpBtn.addEventListener('click',async()=>{
+      const e=(emailInput.value||'').trim(), p=passInput.value||'';
+      if(!e||!p) return alert('กรอกอีเมลและรหัสผ่าน');
+      const cred=await createUserWithEmailAndPassword(auth,e,p);
+      await setDoc(doc(db,`users/${cred.user.uid}`),{
+        uid:cred.user.uid,email:e,role:'member',createdAt:Date.now()
+      },{merge:true});
+      try{await sendEmailVerification(cred.user);}catch{}
+      hideAuth();
+    });
+
+    resetLink.addEventListener('click',async()=>{
+      const e=(emailInput.value||'').trim();
+      if(!e) return alert('ใส่อีเมลก่อน');
+      await sendPasswordResetEmail(auth,e);
+      alert('ส่งลิงก์รีเซ็ตรหัสผ่านแล้ว');
+    });
+
+    verifyLink.addEventListener('click',async()=>{
+      if(!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
+      await sendEmailVerification(auth.currentUser);
+      alert('ส่งลิงก์ยืนยันแล้ว');
+    });
+
+    onAuthStateChanged(auth, async (user)=>{
+      if(user){
+        loginBtn.style.display='none';
+        logoutBtn.style.display='inline-block';
+
+        const profRef=doc(db,`users/${user.uid}`);
+        const profSnap=await getDoc(profRef);
+        if(!profSnap.exists()){
+          await setDoc(profRef,{
+            uid:user.uid,email:user.email||'',role:'member',createdAt:Date.now()
+          },{merge:true});
+        }
+        await initEditor();
+      }else{
+        loginBtn.style.display='inline-block';
+        logoutBtn.style.display='none';
+        showAuth();
+      }
+    });
+
+    homeBtn.addEventListener('click',()=>location.href='index.html');
+
+    saveBtn.addEventListener('click', async ()=>{
+      const title       = document.getElementById('title').value.trim() || 'Untitled';
+      const author      = document.getElementById('author').value.trim();
+      const blurb       = document.getElementById('blurb').value.trim();
+      const inspiration = document.getElementById('inspiration').value.trim();
+      const characters  = document.getElementById('characters').value.trim();
+      const category    = document.getElementById('cat').value;
+      const chapters    = Array.from(document.querySelectorAll('.chapter-text')).map(t=>t.value);
+
+      const now  = Date.now();
+      let   list = await loadStories();
+      let   story;
+
+      if (currentId){
+        const idx = list.findIndex(s => s.id === currentId);
+        if (idx >= 0){
+          story = { ...list[idx], title, author, blurb, inspiration, characters, category, chapters, updatedAt: now };
+          list[idx] = story;
+        } else {
+          story = { id: currentId, title, author, blurb, inspiration, characters, category, chapters, updatedAt: now };
+          list.push(story);
+        }
+      } else {
+        story = { id: uid(), title, author, blurb, inspiration, characters, category, chapters, updatedAt: now };
+        list.push(story);
+      }
+
+      // กันซ้ำตาม id อีกรอบ
+      const seen = new Set();
+      list = list.filter(s => {
+        if (!s.id) return false;
+        if (seen.has(s.id)) return false;
+        seen.add(s.id);
+        return true;
+      });
+
+      await saveStories(list);
+      alert('บันทึกเรียบร้อย ❤️');
+      history.replaceState(null,'','write.html?id='+encodeURIComponent(story.id));
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const t = (document.getElementById('title').value || '').trim();
+      if (!t) {
+        if (!confirm('ยังไม่ได้ใส่ชื่อเรื่อง ต้องการดาวน์โหลดไฟล์ชื่อ MySweetStory.docx ไหม?')) return;
+      }
+      downloadDocxFromForm().catch(err => {
+        console.error(err);
+        alert('Export .docx ผิดพลาด');
+      });
+    });
+  }
+
+  init();
 </script>
+
 
 </body>
 </html>
