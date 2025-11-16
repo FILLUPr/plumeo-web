@@ -139,48 +139,70 @@
     Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer, PageOrientation
   } from "https://cdn.jsdelivr.net/npm/docx@8.5.0/+esm";
 
-  /* ==== Firebase Config (ใช้ API key ใหม่เดียวกับ index) ==== */
-  const firebaseConfig = {
-    apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
-    authDomain: "plumeo-475aa.firebaseapp.com",
-    projectId: "plumeo-475aa",
-    storageBucket: "plumeo-475aa.firebasestorage.app",
-    messagingSenderId: "452998025243",
-    appId: "1:452998025243:web:27d16edb8360cda2cc711e",
-    measurementId: "G-ZFXVG7W436"
-  };
-
+  /* ==== Firebase Config (auto from Hosting) ==== */
+  const resp = await fetch("/__/firebase/init.json");
+  if (!resp.ok) {
+    console.error("Failed to load Firebase init.json", resp.status);
+    alert("โหลดการตั้งค่า Firebase ไม่สำเร็จ");
+  }
+  const firebaseConfig = await resp.json();
   const app = initializeApp(firebaseConfig);
+
+  /* ด้านล่างนี้คงไว้เหมือนเดิม */
   const auth = getAuth(app);
-  const db   = getFirestore(app);
+  const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
   await setPersistence(auth, browserLocalPersistence);
 
   // ===== Auth UI =====
-  const loginBtn=document.getElementById('loginBtn'), logoutBtn=document.getElementById('logoutBtn');
-  const backdrop=document.getElementById('authBackdrop'); const emailInput=document.getElementById('authEmail'); const passInput=document.getElementById('authPassword');
-  const emailSignInBtn=document.getElementById('emailSignInBtn'); const emailSignUpBtn=document.getElementById('emailSignUpBtn'); const googleBtn=document.getElementById('googleBtn');
-  const resetLink=document.getElementById('resetLink'); const verifyLink=document.getElementById('verifyLink'); const closeAuth=document.getElementById('closeAuth');
+  const loginBtn = document.getElementById('loginBtn'),
+        logoutBtn = document.getElementById('logoutBtn');
+  const backdrop = document.getElementById('authBackdrop');
+  const emailInput = document.getElementById('authEmail');
+  const passInput = document.getElementById('authPassword');
+  const emailSignInBtn = document.getElementById('emailSignInBtn');
+  const emailSignUpBtn = document.getElementById('emailSignUpBtn');
+  const googleBtn = document.getElementById('googleBtn');
+  const resetLink = document.getElementById('resetLink');
+  const verifyLink = document.getElementById('verifyLink');
+  const closeAuth = document.getElementById('closeAuth');
 
-  const showAuth=()=>backdrop.style.display='flex', hideAuth=()=>backdrop.style.display='none';
-  loginBtn.addEventListener('click',showAuth); closeAuth.addEventListener('click',hideAuth);
-  logoutBtn.addEventListener('click',async()=>{ await signOut(auth); location.reload(); });
-  googleBtn.addEventListener('click',async()=>{ await signInWithPopup(auth,provider); hideAuth(); });
-  emailSignInBtn.addEventListener('click',async()=>{ const e=(emailInput.value||'').trim(),p=passInput.value||''; if(!e||!p) return alert('กรอกอีเมลและรหัสผ่าน'); await signInWithEmailAndPassword(auth,e,p); hideAuth(); });
-  emailSignUpBtn.addEventListener('click',async()=>{ const e=(emailInput.value||'').trim(),p=passInput.value||''; if(!e||!p) return alert('กรอกอีเมลและรหัสผ่าน'); const cred=await createUserWithEmailAndPassword(auth,e,p); await setDoc(doc(db,`users/${cred.user.uid}`),{uid:cred.user.uid,email:e,role:'member',createdAt:Date.now()},{merge:true}); try{await sendEmailVerification(cred.user);}catch{} hideAuth(); });
-  resetLink.addEventListener('click',async()=>{ const e=(emailInput.value||'').trim(); if(!e) return alert('ใส่อีเมลก่อน'); await sendPasswordResetEmail(auth,e); alert('ส่งลิงก์รีเซ็ตรหัสผ่านแล้ว'); });
-  verifyLink.addEventListener('click',async()=>{ if(!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน'); await sendEmailVerification(auth.currentUser); alert('ส่งลิงก์ยืนยันแล้ว'); });
+  const showAuth = () => backdrop.style.display = 'flex';
+  const hideAuth = () => backdrop.style.display = 'none';
 
-  // ===== บังคับล็อกอินก่อนใช้งาน editor =====
-  onAuthStateChanged(auth, async (user)=>{
-    if(user){
-      loginBtn.style.display='none'; logoutBtn.style.display='inline-block';
-      const profRef=doc(db,`users/${user.uid}`); const profSnap=await getDoc(profRef);
-      if(!profSnap.exists()) await setDoc(profRef,{uid:user.uid,email:user.email||'',role:'member',createdAt:Date.now()},{merge:true});
-      initEditor();
-    }else{
-      loginBtn.style.display='inline-block'; logoutBtn.style.display='none'; showAuth();
-    }
+  loginBtn.addEventListener('click', showAuth);
+  closeAuth.addEventListener('click', hideAuth);
+  logoutBtn.addEventListener('click', async () => { await signOut(auth); location.reload(); });
+  googleBtn.addEventListener('click', async () => { await signInWithPopup(auth, provider); hideAuth(); });
+  emailSignInBtn.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim(), p = passInput.value || '';
+    if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+    await signInWithEmailAndPassword(auth, e, p);
+    hideAuth();
+  });
+  emailSignUpBtn.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim(), p = passInput.value || '';
+    if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+    const cred = await createUserWithEmailAndPassword(auth, e, p);
+    await setDoc(doc(db, `users/${cred.user.uid}`), {
+      uid: cred.user.uid,
+      email: e,
+      role: 'member',
+      createdAt: Date.now()
+    }, { merge: true });
+    try { await sendEmailVerification(cred.user); } catch {}
+    hideAuth();
+  });
+  resetLink.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim();
+    if (!e) return alert('ใส่อีเมลก่อน');
+    await sendPasswordResetEmail(auth, e);
+    alert('ส่งลิงก์รีเซ็ตรหัสผ่านแล้ว');
+  });
+  verifyLink.addEventListener('click', async () => {
+    if (!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
+    await sendEmailVerification(auth.currentUser);
+    alert('ส่งลิงก์ยืนยันแล้ว');
   });
 
   // ===== Editor helpers =====
@@ -193,9 +215,22 @@
     document.getElementById('chapters').appendChild(wrap);
   }
   function renumberChapters(){
-    Array.from(document.querySelectorAll('#chapters .section.chapter')).forEach((n,i)=>{ n.dataset.index=String(i+1); n.querySelector('.chapter-title').textContent=`ตอนที่ ${i+1} 🍰`; n.querySelector('.chapter-text').placeholder=`พิมพ์เนื้อหาตอนที่ ${i+1}...`; });
+    Array.from(document.querySelectorAll('#chapters .section.chapter')).forEach((n,i)=>{ 
+      n.dataset.index=String(i+1); 
+      n.querySelector('.chapter-title').textContent=`ตอนที่ ${i+1} 🍰`; 
+      n.querySelector('.chapter-text').placeholder=`พิมพ์เนื้อหาตอนที่ ${i+1}...`; 
+    });
   }
-  document.addEventListener('click',(e)=>{ const btn=e.target.closest('.remove-chapter'); if(!btn) return; const sec=btn.closest('.section.chapter'); if(!sec) return; if(confirm(`ลบ${sec.querySelector('.chapter-title').textContent} จริงไหม?`)){ sec.remove(); renumberChapters(); } });
+  document.addEventListener('click',(e)=>{ 
+    const btn=e.target.closest('.remove-chapter'); 
+    if(!btn) return; 
+    const sec=btn.closest('.section.chapter'); 
+    if(!sec) return; 
+    if(confirm(`ลบ${sec.querySelector('.chapter-title').textContent} จริงไหม?`)){ 
+      sec.remove(); 
+      renumberChapters(); 
+    } 
+  });
 
   function loadStoryToForm(story){
     document.getElementById('title').value=story.title||'';
@@ -213,62 +248,82 @@
     if(!story.chapters||!story.chapters.length) addChapter('');
   }
 
-  const params=new URLSearchParams(location.search); const currentId=params.get('id');
+  // ==== ใช้ doc เดียวต่อเรื่อง ====
+  const params = new URLSearchParams(location.search);
+  let currentId = params.get('id') || null;
 
-  async function loadStories(){
-    const q=query(collection(db,`users/${auth.currentUser.uid}/stories`),orderBy('updatedAt','desc'));
-    const snap=await getDocs(q); const list=[]; snap.forEach(d=>list.push(d.data())); return list;
-  }
-  async function saveStories(list){
-    const tasks=list.map(s=> setDoc(doc(db,`users/${auth.currentUser.uid}/stories/${s.id}`), s, {merge:true}));
-    await Promise.all(tasks);
-  }
-  async function deleteThisStory(id){
-    await deleteDoc(doc(db,`users/${auth.currentUser.uid}/stories/${id}`));
+  function storyRef(id) {
+    return doc(db, `users/${auth.currentUser.uid}/stories/${id}`);
   }
 
   async function initEditor(){
-    if(currentId){
-      const list=await loadStories();
-      const found=list.find(s=>s.id===currentId);
-      if(found) loadStoryToForm(found); else addChapter('');
-    } else { addChapter(''); }
+    if (!auth.currentUser) return;
+
+    if (currentId) {
+      const snap = await getDoc(storyRef(currentId));
+      if (snap.exists()) {
+        loadStoryToForm(snap.data());
+      } else {
+        addChapter('');
+      }
+    } else {
+      addChapter('');
+    }
   }
+
+  // ===== บังคับล็อกอินก่อนใช้งาน editor =====
+  onAuthStateChanged(auth, async (user)=>{
+    if(user){
+      loginBtn.style.display='none'; 
+      logoutBtn.style.display='inline-block';
+      const profRef=doc(db,`users/${user.uid}`); 
+      const profSnap=await getDoc(profRef);
+      if(!profSnap.exists()) await setDoc(profRef,{uid:user.uid,email:user.email||'',role:'member',createdAt:Date.now()},{merge:true});
+      initEditor();
+    }else{
+      loginBtn.style.display='inline-block'; 
+      logoutBtn.style.display='none'; 
+      showAuth();
+    }
+  });
 
   document.getElementById('addChapterBtn').addEventListener('click',()=>addChapter(''));
   document.getElementById('homeBtn').addEventListener('click',()=>location.href='index.html');
 
+  // ==== บันทึก doc เดียว ====
   document.getElementById('saveBtn').addEventListener('click', async ()=>{
-    const title=document.getElementById('title').value.trim()||'Untitled';
-    const author=document.getElementById('author').value.trim();
-    const blurb=document.getElementById('blurb').value.trim();
-    const inspiration=document.getElementById('inspiration').value.trim();
-    const characters=document.getElementById('characters').value.trim();
-    const category=document.getElementById('cat').value;
-    const chapters=Array.from(document.querySelectorAll('.chapter-text')).map(t=>t.value);
+    const title       = document.getElementById('title').value.trim()||'Untitled';
+    const author      = document.getElementById('author').value.trim();
+    const blurb       = document.getElementById('blurb').value.trim();
+    const inspiration = document.getElementById('inspiration').value.trim();
+    const characters  = document.getElementById('characters').value.trim();
+    const category    = document.getElementById('cat').value;
+    const chapters    = Array.from(document.querySelectorAll('.chapter-text')).map(t=>t.value);
 
-    const now=Date.now(); let list=await loadStories(); let story;
-    if(currentId){
-      const idx=list.findIndex(s=>s.id===currentId);
-      if(idx>=0){
-        story={...list[idx], title, author, blurb, inspiration, characters, category, chapters, updatedAt:now};
-        list[idx]=story;
-      } else {
-        story={id:currentId, title, author, blurb, inspiration, characters, category, chapters, updatedAt:now};
-        list.push(story);
-      }
-    }else{
-      story={id:uid(), title, author, blurb, inspiration, characters, category, chapters, updatedAt:now};
-      list.push(story);
-    }
-    await saveStories(list);
+    const now = Date.now();
+    const id  = currentId || uid();
+
+    const story = {
+      id,
+      title,
+      author,
+      blurb,
+      inspiration,
+      characters,
+      category,
+      chapters,
+      updatedAt: now
+    };
+
+    await setDoc(storyRef(id), story, { merge: true });
+    currentId = id;
+
     alert('บันทึกเรียบร้อย ❤️');
-    history.replaceState(null,'','write.html?id='+encodeURIComponent(story.id));
+    history.replaceState(null,'','write.html?id='+encodeURIComponent(id));
   });
 
   /* =========================
      Export Word (.docx)
-     ลำดับ: ชื่อเรื่อง → หมวดหมู่ → แรงบันดาลใจ → ตัวละคร → คำโปรย → ตอน
      ========================= */
   const H1 = (text) => new Paragraph({
     children: [new TextRun({ text, bold: true })],
@@ -280,7 +335,7 @@
     heading: HeadingLevel.HEADING_2,
     spacing: { before: 120, after: 80 },
   });
-  const P = (text = "", { after = 120, center = false } = {}) =>
+  const Pp = (text = "", { after = 120, center = false } = {}) =>
     new Paragraph({ alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT, spacing: { after }, children: [new TextRun({ text })] });
   const Bullet = (text) => new Paragraph({ text, bullet: { level: 0 }, spacing: { after: 80 } });
 
@@ -312,15 +367,15 @@
         children: [ new TextRun({ text: 'หมวดหมู่ : ', bold: true }), new TextRun({ text: category }) ],
       }));
     }
-    children.push(P(`วันที่พิมพ์ : ${new Date().toLocaleDateString('th-TH')}`, { after: 200 }));
+    children.push(Pp(`วันที่พิมพ์ : ${new Date().toLocaleDateString('th-TH')}`, { after: 200 }));
 
     // Inspiration
     if (inspiration.trim()) {
       children.push(H2('แรงบันดาลใจ 🍓'));
-      inspiration.split(/\r?\n/).forEach(line => children.push(P(line)));
+      inspiration.split(/\r?\n/).forEach(line => children.push(Pp(line)));
     }
 
-    // Characters (บรรทัดละ 1 → bullet)
+    // Characters
     const charLines = characters.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     if (charLines.length) {
       children.push(H2('ตัวละคร 🧸'));
@@ -340,7 +395,7 @@
     if (chapters.length) {
       chapters.forEach(c => {
         children.push(H2(`— ตอนที่ ${c.idx} —`));
-        (c.text || '').split(/\r?\n/).forEach(line => children.push(P(line)));
+        (c.text || '').split(/\r?\n/).forEach(line => children.push(Pp(line)));
       });
     }
 
@@ -348,7 +403,7 @@
       sections: [{
         properties: {
           page: {
-            margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }, // ≈ 2 ซม.
+            margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
             size: { orientation: PageOrientation.PORTRAIT },
           },
         },
@@ -359,8 +414,8 @@
 
   async function downloadDocxFromForm() {
     const title = (document.getElementById('title').value || 'MySweetStory').trim() || 'MySweetStory';
-    const doc = buildDocFromForm();
-    const blob = await Packer.toBlob(doc);
+    const docx = buildDocFromForm();
+    const blob = await Packer.toBlob(docx);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
