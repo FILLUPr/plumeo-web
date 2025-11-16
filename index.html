@@ -206,26 +206,32 @@
 
   // === Data layer (admin เห็นทุกเรื่องด้วย collectionGroup) ===
   async function loadStoriesCloud() {
-    const token = auth.currentUser ? await auth.currentUser.getIdTokenResult(true) : null;
-    const role  = token?.claims?.role || 'member';
-    window.__currentRole = role;
+  const token = auth.currentUser ? await auth.currentUser.getIdTokenResult(true) : null;
+  const role  = token?.claims?.role || 'member';
+  window.__currentRole = role;
 
-    if (role === 'admin') {
-      const q = query(collectionGroup(db, 'stories'), orderBy('updatedAt', 'desc'));
-      const snap = await getDocs(q);
-      const list = [];
-      snap.forEach(d => list.push(d.data()));
-      return list;
-    } else if (auth.currentUser) {
-      const q = query(collection(db, `users/${auth.currentUser.uid}/stories`), orderBy('updatedAt', 'desc'));
-      const snap = await getDocs(q);
-      const list = [];
-      snap.forEach(d => list.push(d.data()));
-      return list;
-    } else {
-      return [];
-    }
+  // helper แปลง snapshot → array พร้อม doc.id
+  const mapSnap = (snap) => {
+    const list = [];
+    snap.forEach(d => {
+      list.push({ id: d.id, ...d.data() });
+    });
+    return list;
+  };
+
+  if (role === 'admin') {
+    const q = query(collectionGroup(db, 'stories'), orderBy('updatedAt', 'desc'));
+    const snap = await getDocs(q);
+    return mapSnap(snap);
+  } else if (auth.currentUser) {
+    const q = query(collection(db, `users/${auth.currentUser.uid}/stories`), orderBy('updatedAt', 'desc'));
+    const snap = await getDocs(q);
+    return mapSnap(snap);
+  } else {
+    return [];
   }
+}
+
 
   async function deleteStoryCloud(id) {
     if (window.__currentRole === 'admin') {
