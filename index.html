@@ -277,10 +277,29 @@
   });
 
   // === UI list ===
+    // === UI list ===
   async function renderList() {
     const container = document.getElementById('storiesList');
     container.innerHTML = '';
-    const list = await window.MyCloud.loadStories();
+
+    const rawList = await window.MyCloud.loadStories();
+
+    // --- กรองไม่ให้ขึ้นซ้ำ ---
+    // ใช้คีย์จาก title + blurb + วันที่อัปเดต (ตัดให้ละเอียดพอสมควร)
+    const seen = new Set();
+    const list = [];
+    for (const item of rawList) {
+      const key = [
+        (item.title || '').trim(),
+        (item.blurb || '').trim(),
+        new Date(item.updatedAt || 0).toISOString().slice(0, 10) // เฉพาะวัน
+      ].join('|');
+
+      if (seen.has(key)) continue; // ถ้าเคยเจอแล้วข้าม
+      seen.add(key);
+      list.push(item);
+    }
+
     if (!list.length) {
       document.getElementById('emptyMsg').style.display = 'block';
       return;
@@ -336,6 +355,7 @@
       container.appendChild(card);
     });
   }
+
 
   // ปุ่มนำทาง
   plotBtn.addEventListener('click', () => location.href = 'plot_library.html');
