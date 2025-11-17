@@ -105,7 +105,7 @@
     <div class="title">📚 คลังพล็อตของฉัน</div>
     <div class="auth-area">
       <span id="userEmail"></span>
-      <button id="loginBtn">🔑 เข้าสู่ระบบ</button>
+      <button id="loginBtn">🔑 ไปหน้าล็อกอิน</button>
       <button id="logoutBtn" style="display:none">🚪 ออกจากระบบ</button>
     </div>
   </header>
@@ -125,9 +125,8 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut,
-      onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-      sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence
+      getAuth, onAuthStateChanged, signOut,
+      setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import {
       getFirestore, collection, query, orderBy, getDocs, deleteDoc, doc, getDoc, setDoc
@@ -146,20 +145,15 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getFirestore(app);
-    const provider = new GoogleAuthProvider();
     await setPersistence(auth, browserLocalPersistence);
 
-    const loginBtn   = document.getElementById('loginBtn');
-    const logoutBtn  = document.getElementById('logoutBtn');
-    const userEmailEl= document.getElementById('userEmail');
-    const plotList   = document.getElementById('plotList');
-    const newPlotBtn = document.getElementById('newPlotBtn');
-
-    const backdrop = null; // ที่หน้านี้ใช้ auth แบบปุ่มธรรมดา ไม่มี modal
+    const loginBtn    = document.getElementById('loginBtn');
+    const logoutBtn   = document.getElementById('logoutBtn');
+    const userEmailEl = document.getElementById('userEmail');
+    const plotList    = document.getElementById('plotList');
+    const newPlotBtn  = document.getElementById('newPlotBtn');
 
     loginBtn.addEventListener('click', () => {
-      // ง่ายสุด: ให้ไปล็อกอินจาก index แล้วกลับมาก็ได้
-      // หรือจะเปิด popup email ก็ทำได้เหมือนหน้าอื่น ถ้าต้องการเดี๋ยวค่อยเพิ่ม
       window.location.href = 'index.html';
     });
 
@@ -172,13 +166,8 @@
       window.location.href = 'plot.html';
     });
 
-    async function loadPlots() {
+    async function loadPlots(user) {
       plotList.innerHTML = '';
-      const user = auth.currentUser;
-      if (!user) {
-        plotList.innerHTML = '<div class="empty">ต้องเข้าสู่ระบบก่อนนะคะ 🍪</div>';
-        return;
-      }
 
       const q = query(
         collection(db, `users/${user.uid}/plots`),
@@ -220,7 +209,7 @@
         delBtn.onclick = async () => {
           if (confirm('ลบพล็อตนี้แน่ใจไหม?')) {
             await deleteDoc(doc(db, `users/${user.uid}/plots/${d.id}`));
-            await loadPlots();
+            await loadPlots(user);
           }
         };
 
@@ -239,7 +228,7 @@
         loginBtn.style.display  = 'none';
         logoutBtn.style.display = 'inline-block';
 
-        // ensure profile (เหมือนหน้าอื่น)
+        // ensure profile (ให้ตรงกับหน้าที่เหลือ)
         const profRef  = doc(db, `users/${user.uid}`);
         const profSnap = await getDoc(profRef);
         if (!profSnap.exists()) {
@@ -251,7 +240,7 @@
           }, { merge:true });
         }
 
-        await loadPlots();
+        await loadPlots(user);
       } else {
         userEmailEl.textContent = '';
         loginBtn.style.display  = 'inline-block';
