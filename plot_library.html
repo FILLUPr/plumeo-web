@@ -1,145 +1,420 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>คลังพล็อตของฉัน | My Sweet Story</title>
-  <style>
-    body {
-      font-family: "Cordia New", sans-serif;
-      background-color: #fffaf3;
-      background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP4+fPnfwAI+AN6I2HHzgAAAABJRU5ErkJggg==');
-      background-repeat: repeat;
-      margin: 0;
-      padding: 0;
-      color: #5a4632;
-    }
-    header {
-      background-color: #f9e0c3;
-      padding: 20px;
-      text-align: center;
-      font-size: 2rem;
-      font-weight: bold;
-      color: #8b5e3c;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-    }
-    main {
-      max-width: 850px;
-      margin: 30px auto;
-      background-color: #fff7ee;
-      border-radius: 16px;
-      padding: 25px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    h2 {
-      color: #a67856;
-      border-bottom: 2px dashed #e0c4a8;
-      padding-bottom: 5px;
-      font-size: 1.4rem;
-    }
-    .plot-item {
-      background-color: #fff;
-      border: 1px solid #e4d3c1;
-      border-radius: 10px;
-      padding: 15px;
-      margin-bottom: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .plot-info {
-      flex: 1;
-      margin-right: 15px;
-    }
-    button {
-      background-color: #f4b8b8;
-      border: none;
-      color: #fff;
-      padding: 8px 14px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 1rem;
-      margin-left: 6px;
-      transition: 0.2s;
-    }
-    button:hover {
-      background-color: #f19c9c;
-    }
-    .empty {
-      text-align: center;
-      color: #a67856;
-      padding: 40px 0;
-      font-size: 1.2rem;
-    }
-    footer {
-      text-align: center;
-      margin-top: 20px;
-      font-size: 0.9rem;
-      color: #8c7760;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>My Sweet Story - คลังพล็อต</title>
+<style>
+  :root{ --bg:#FFEFF6; --card:#FFF8F3; --accent:#F4B2C1; --text:#4B2E2E; }
+  body{
+    margin:0; font-family:'Cordia New',sans-serif; background:var(--bg); color:var(--text); padding:20px;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><rect fill="%23FFEFF6" width="160" height="160"/><g transform="translate(10,10)"><g transform="scale(0.9)"><g><path d="M40 55c0-12 20-12 20 0v5H40v-5z" fill="%23F8C6D0" stroke="%23DCA0B0" stroke-width="2"/></g><g transform="translate(0,10)"><rect x="30" y="60" width="40" height="18" rx="8" fill="%23FFD9E6" stroke="%23E6A9B8" stroke-width="2"/></g><g transform="translate(10,0)"><circle cx="24" cy="24" r="6" fill="%23FF7B7B"/></g></g></g></svg>');
+    background-repeat:repeat; background-size:160px 160px;
+  }
+  header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  h1{font-size:30px; color:#C97381; margin:6px 0;}
+  .top-controls{ display:flex; gap:8px; align-items:center; }
+  .btn{
+    display:inline-block; padding:8px 14px; border-radius:12px;
+    background:linear-gradient(180deg,#F8B1C0,#E88DA0); color:#fff; border:none; font-size:16px; cursor:pointer;
+    box-shadow:0 4px 12px rgba(200,120,140,.25);
+  }
+  main{ max-width:980px; margin:0 auto; }
+
+  .layout{ display:grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.3fr); gap:16px; }
+  @media(max-width:900px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{ background:var(--card); border-radius:12px; padding:14px; box-shadow:0 6px 18px rgba(100,40,60,.08); }
+
+  .panel-title{font-weight:bold; margin-bottom:6px; color:#C87D7D;}
+  input, textarea{
+    width:100%; padding:8px; border-radius:8px; border:2px solid #F4C2C2;
+    font-family:'Cordia New'; font-size:14pt; box-sizing:border-box;
+  }
+  textarea{ min-height:120px; resize:vertical; background:#FFF5F0; }
+
+  .small-btn{
+    background:#F4B2C1; border:none; color:#fff; padding:6px 10px;
+    border-radius:8px; cursor:pointer; font-size:13px; margin-left:6px;
+  }
+  .small-btn.danger{ background:#e57386; }
+  .plot-list{ display:flex; flex-direction:column; gap:10px; max-height:450px; overflow:auto; }
+  .plot-card{ background:#FFF; border-radius:10px; padding:10px; border:1px solid #F5D0DA; cursor:pointer; }
+  .plot-title{ font-weight:bold; margin-bottom:4px; color:#6b3740; }
+  .plot-meta{ font-size:11px; color:#8a5b5e; margin-bottom:4px;}
+  .plot-body{ font-size:13px; color:#7a4e53; white-space:pre-line; }
+
+  .badge{ display:inline-block; padding:2px 8px; border-radius:999px; background:#F4B2C1; font-size:11px; color:#fff; margin-right:4px;}
+
+  .empty{ text-align:center; color:#8a5b5e; font-size:14px; margin-top:30px; }
+
+  footer{ text-align:center; margin-top:18px; color:#7a4e53; font-size:13px; }
+
+  /* Auth Modal เหมือนหน้าอื่น */
+  .auth-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:9999}
+  .auth-modal{width:min(420px,92vw);background:#FFF;border-radius:14px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:'Cordia New',sans-serif}
+  .auth-modal h3{margin:0 0 8px 0;color:#C97381;font-size:22px}
+  .auth-modal input{width:100%;padding:10px;border-radius:8px;border:2px solid #F4C2C2;margin:6px 0;font-size:14pt}
+  .auth-row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .btn.primary{padding:8px 12px;border:none;border-radius:10px;background:linear-gradient(180deg,#F1A9B6,#D97288);color:#fff;cursor:pointer}
+  .btn.ghost{padding:8px 12px;border-radius:10px;border:2px solid #F4B2C1;background:#fff;color:#8b4b51;cursor:pointer}
+  .auth-note{font-size:13px;color:#8a5b5e;margin-top:6px}
+  .link{color:#C97381; cursor:pointer; text-decoration:underline;}
+  .sep-center{display:flex;align-items:center;gap:8px;margin:8px 0}
+  .sep-center::before,.sep-center::after{content:"";flex:1;height:1px;background:#f0cfd6}
+</style>
 </head>
 <body>
-  <header>📚 คลังพล็อตของฉัน</header>
-  <main>
-    <h2>พล็อตทั้งหมดของฉัน 🍪</h2>
-    <div id="plotList" class="plot-list"></div>
+<header>
+  <div class="top-controls">
+    <button class="btn" id="homeBtn">🏠 หน้าหลัก</button>
+  </div>
+  <h1>📚 คลังพล็อตของฉัน</h1>
+  <div class="top-controls">
+    <button class="btn" id="loginBtn">🔑 เข้าสู่ระบบ</button>
+    <button class="btn" id="logoutBtn" style="display:none">🚪 ออกจากระบบ</button>
+  </div>
+</header>
 
-    <div style="text-align:center; margin-top:20px;">
-      <button onclick="newPlot()">🍰 สร้างพล็อตใหม่</button>
-      <button onclick="window.location.href='index.html'">🏠 กลับหน้าหลัก</button>
+<main>
+  <div class="layout">
+    <!-- แบบฟอร์มพล็อต -->
+    <div class="panel">
+      <div class="panel-title">สร้าง / แก้ไขพล็อต</div>
+      <label>ชื่อพล็อต</label>
+      <input id="plotTitle" placeholder="เช่น พล็อตร้านกาแฟในฝันของกระดาษทิชชู่" />
+      <br/><br/>
+      <label>แท็กสั้น ๆ (เช่น เพื่อนรัก,แฟนเก่า,แฟนตาซี)</label>
+      <input id="plotTags" placeholder="คั่นด้วย , (จุลภาค)" />
+      <br/><br/>
+      <label>รายละเอียด / พล็อตโดยย่อ</label>
+      <textarea id="plotBody" placeholder="เขียนโครงเรื่องสั้น ๆ ไว้กันลืมได้เลย 😊"></textarea>
+      <br/>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+        <span id="editingLabel" style="font-size:13px;color:#8a5b5e;">สร้างพล็อตใหม่</span>
+        <div>
+          <button class="small-btn" id="savePlotBtn">💾 บันทึกพล็อต</button>
+          <button class="small-btn" id="clearFormBtn">🧹 ล้างฟอร์ม</button>
+          <button class="small-btn danger" id="deletePlotBtn" style="display:none">🗑️ ลบพล็อตนี้</button>
+        </div>
+      </div>
     </div>
-  </main>
+
+    <!-- รายการพล็อต -->
+    <div class="panel">
+      <div class="panel-title">รายการพล็อตของฉัน</div>
+      <div id="plotsContainer" class="plot-list"></div>
+      <div id="emptyMsg" class="empty" style="display:none;">ยังไม่มีพล็อตที่บันทึกไว้เลย ลองเขียนพล็อตแรกดูไหม ✨</div>
+    </div>
+  </div>
 
   <footer>© 2025 My Sweet Story — Sweet Ideas Bloom Here ✨</footer>
+</main>
 
-  <script>
-    const plotList = document.getElementById("plotList");
+<!-- Auth Modal (เหมือน index / write) -->
+<div class="auth-modal-backdrop" id="authBackdrop">
+  <div class="auth-modal">
+    <h3>เข้าสู่ระบบ</h3>
+    <input id="authEmail" type="email" placeholder="อีเมล" />
+    <input id="authPassword" type="password" placeholder="รหัสผ่าน" />
+    <div class="auth-row">
+      <button class="btn primary" id="emailSignInBtn">เข้าสู่ระบบ</button>
+      <button class="btn ghost" id="emailSignUpBtn">สมัครสมาชิก</button>
+    </div>
+    <div class="sep-center"><span>หรือ</span></div>
+    <button class="btn primary" id="googleBtn" style="width:100%">เข้าสู่ระบบด้วย Google</button>
+    <div class="auth-note">
+      ลืมรหัสผ่าน? <span class="link" id="resetLink">กดที่นี่</span><br/>
+      ยังไม่ยืนยันอีเมล? <span class="link" id="verifyLink">ส่งลิงก์ยืนยันอีกครั้ง</span>
+    </div>
+    <div class="auth-row" style="margin-top:8px">
+      <span id="roleBadge"></span>
+      <button class="btn ghost" id="closeAuth">ปิด</button>
+    </div>
+  </div>
+</div>
 
-    function loadPlots() {
-      plotList.innerHTML = "";
-      let keys = Object.keys(localStorage).filter(k => k.startsWith("plot_"));
-      if (keys.length === 0) {
-        plotList.innerHTML = '<div class="empty">ยังไม่มีพล็อตที่บันทึกไว้ 🍪</div>';
-        return;
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut,
+    onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence
+  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDocs, setDoc, collection, query, orderBy, getDoc, deleteDoc
+  } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
+    authDomain: "plumeo-475aa.firebaseapp.com",
+    projectId: "plumeo-475aa",
+    storageBucket: "plumeo-475aa.firebasestorage.app",
+    messagingSenderId: "452998025243",
+    appId: "1:452998025243:web:27d16edb8360cda2cc711e",
+    measurementId: "G-ZFXVG7W436"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  // DOM
+  const loginBtn   = document.getElementById('loginBtn');
+  const logoutBtn  = document.getElementById('logoutBtn');
+  const homeBtn    = document.getElementById('homeBtn');
+
+  const backdrop   = document.getElementById('authBackdrop');
+  const emailInput = document.getElementById('authEmail');
+  const passInput  = document.getElementById('authPassword');
+  const emailSignInBtn = document.getElementById('emailSignInBtn');
+  const emailSignUpBtn = document.getElementById('emailSignUpBtn');
+  const googleBtn      = document.getElementById('googleBtn');
+  const resetLink      = document.getElementById('resetLink');
+  const verifyLink     = document.getElementById('verifyLink');
+  const closeAuth      = document.getElementById('closeAuth');
+
+  const plotTitle  = document.getElementById('plotTitle');
+  const plotTags   = document.getElementById('plotTags');
+  const plotBody   = document.getElementById('plotBody');
+  const savePlotBtn   = document.getElementById('savePlotBtn');
+  const clearFormBtn  = document.getElementById('clearFormBtn');
+  const deletePlotBtn = document.getElementById('deletePlotBtn');
+  const editingLabel  = document.getElementById('editingLabel');
+  const plotsContainer= document.getElementById('plotsContainer');
+  const emptyMsg      = document.getElementById('emptyMsg');
+  const roleBadge     = document.getElementById('roleBadge');
+
+  let currentEditingId = null;
+
+  const showAuth = () => { backdrop.style.display = 'flex'; };
+  const hideAuth = () => { backdrop.style.display = 'none'; };
+
+  function uid(){
+    return 'plot-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  }
+
+  async function loadPlots(){
+    const user = auth.currentUser;
+    if (!user) return [];
+    const q = query(collection(db, `users/${user.uid}/plots`), orderBy('updatedAt','desc'));
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+    return list;
+  }
+
+  async function savePlotToFirestore(plot){
+    const user = auth.currentUser;
+    if (!user) return;
+    await setDoc(doc(db, `users/${user.uid}/plots/${plot.id}`), plot, { merge:true });
+  }
+
+  async function deletePlotFromFirestore(id){
+    const user = auth.currentUser;
+    if (!user) return;
+    await deleteDoc(doc(db, `users/${user.uid}/plots/${id}`));
+  }
+
+  function clearForm(){
+    currentEditingId = null;
+    plotTitle.value  = '';
+    plotTags.value   = '';
+    plotBody.value   = '';
+    deletePlotBtn.style.display = 'none';
+    editingLabel.textContent = 'สร้างพล็อตใหม่';
+  }
+
+  function fillForm(plot){
+    currentEditingId = plot.id;
+    plotTitle.value  = plot.title || '';
+    plotTags.value   = (plot.tags || []).join(', ');
+    plotBody.value   = plot.body || '';
+    deletePlotBtn.style.display = 'inline-block';
+    editingLabel.textContent = 'กำลังแก้ไขพล็อต';
+  }
+
+  async function renderList(){
+    plotsContainer.innerHTML = '';
+    const list = await loadPlots();
+
+    if (!list.length){
+      emptyMsg.style.display = 'block';
+      return;
+    }
+    emptyMsg.style.display = 'none';
+
+    list.forEach(plot => {
+      const card = document.createElement('div');
+      card.className = 'plot-card';
+
+      const title = document.createElement('div');
+      title.className = 'plot-title';
+      title.textContent = plot.title || 'พล็อตไม่มีชื่อ';
+
+      const meta = document.createElement('div');
+      meta.className = 'plot-meta';
+      const date = new Date(plot.updatedAt || plot.createdAt || Date.now());
+      meta.textContent = 'อัปเดตล่าสุด: ' + date.toLocaleDateString('th-TH', {year:'numeric',month:'short',day:'numeric'});
+
+      const tagWrap = document.createElement('div');
+      if (Array.isArray(plot.tags)) {
+        plot.tags.filter(Boolean).forEach(t => {
+          const b = document.createElement('span');
+          b.className='badge';
+          b.textContent = t;
+          tagWrap.appendChild(b);
+        });
       }
 
-      keys.forEach(k => {
-        const p = JSON.parse(localStorage.getItem(k));
-        const div = document.createElement("div");
-        div.className = "plot-item";
-        div.innerHTML = `
-          <div class="plot-info">
-            <strong>📖 ${p.title || "(ไม่มีชื่อเรื่อง)"}</strong><br>
-            <small>บันทึกเมื่อ: ${p.date || "ไม่ระบุ"}</small>
-          </div>
-          <div>
-            <button onclick="openPlot('${k}')">เปิดพล็อต</button>
-            <button onclick="deletePlot('${k}')">ลบ</button>
-          </div>
-        `;
-        plotList.appendChild(div);
-      });
-    }
+      const body = document.createElement('div');
+      body.className = 'plot-body';
+      body.textContent = plot.body || '';
 
-    function openPlot(key) {
-      localStorage.setItem("activePlot", key);
-      window.location.href = "plot.html";
-    }
+      card.appendChild(title);
+      card.appendChild(meta);
+      card.appendChild(tagWrap);
+      card.appendChild(body);
 
-    function deletePlot(key) {
-      if (confirm("ลบพล็อตนี้แน่ใจไหม?")) {
-        localStorage.removeItem(key);
-        loadPlots();
+      card.addEventListener('click', () => fillForm(plot));
+
+      plotsContainer.appendChild(card);
+    });
+  }
+
+  async function initAuthUI(){
+    await setPersistence(auth, browserLocalPersistence);
+
+    loginBtn.addEventListener('click', showAuth);
+    closeAuth.addEventListener('click', hideAuth);
+    logoutBtn.addEventListener('click', async ()=>{ await signOut(auth); location.reload(); });
+    homeBtn.addEventListener('click', ()=> location.href='index.html');
+
+    googleBtn.addEventListener('click', async()=>{
+      try{
+        await signInWithPopup(auth,provider);
+        hideAuth();
+      }catch(err){
+        alert(err.message || 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
       }
-    }
+    });
 
-    function newPlot() {
-      localStorage.removeItem("activePlot");
-      window.location.href = "plot.html";
-    }
+    emailSignInBtn.addEventListener('click', async()=>{
+      const e=(emailInput.value||'').trim();
+      const p=passInput.value||'';
+      if(!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+      try{
+        await signInWithEmailAndPassword(auth,e,p);
+        hideAuth();
+      }catch(err){
+        alert(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
+      }
+    });
 
-    loadPlots();
-  </script>
+    emailSignUpBtn.addEventListener('click', async()=>{
+      const e=(emailInput.value||'').trim();
+      const p=passInput.value||'';
+      if(!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+      try{
+        const cred = await createUserWithEmailAndPassword(auth,e,p);
+        await setDoc(doc(db,`users/${cred.user.uid}`),{
+          uid:cred.user.uid,
+          email:e,
+          role:'member',
+          createdAt:Date.now()
+        }, {merge:true});
+        try{ await sendEmailVerification(cred.user); }catch{}
+        hideAuth();
+      }catch(err){
+        alert(err.message || 'สมัครสมาชิกไม่สำเร็จ');
+      }
+    });
+
+    resetLink.addEventListener('click', async()=>{
+      const e=(emailInput.value||'').trim();
+      if(!e) return alert('ใส่อีเมลก่อน');
+      try{
+        await sendPasswordResetEmail(auth,e);
+        alert('ส่งอีเมลตั้งรหัสผ่านใหม่แล้ว');
+      }catch(err){
+        alert(err.message || 'ส่งอีเมลไม่สำเร็จ');
+      }
+    });
+
+    verifyLink.addEventListener('click', async()=>{
+      if(!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
+      try{
+        await sendEmailVerification(auth.currentUser);
+        alert('ส่งลิงก์ยืนยันแล้ว');
+      }catch(err){
+        alert(err.message || 'ส่งลิงก์ไม่สำเร็จ');
+      }
+    });
+
+    onAuthStateChanged(auth, async (user)=>{
+      if(user){
+        loginBtn.style.display='none';
+        logoutBtn.style.display='inline-block';
+
+        const profRef = doc(db,`users/${user.uid}`);
+        const profSnap= await getDoc(profRef);
+        if(!profSnap.exists()){
+          await setDoc(profRef,{
+            uid:user.uid,
+            email:user.email || '',
+            role:'member',
+            createdAt:Date.now()
+          },{merge:true});
+        }
+
+        const token = await user.getIdTokenResult(true);
+        const role  = token?.claims?.role || 'member';
+        if (role === 'admin' && roleBadge) roleBadge.textContent = '⭐ Admin Mode';
+
+        await renderList();
+      }else{
+        loginBtn.style.display='inline-block';
+        logoutBtn.style.display='none';
+        plotsContainer.innerHTML='';
+        emptyMsg.style.display='block';
+        clearForm();
+        showAuth();
+      }
+    });
+  }
+
+  savePlotBtn.addEventListener('click', async()=>{
+    const title = plotTitle.value.trim() || 'พล็อตไม่มีชื่อ';
+    const tags  = plotTags.value.split(',').map(s=>s.trim()).filter(Boolean);
+    const body  = plotBody.value.trim();
+    if (!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
+
+    const now = Date.now();
+    const plot = {
+      id: currentEditingId || uid(),
+      title, tags, body,
+      createdAt: currentEditingId ? undefined : now,
+      updatedAt: now
+    };
+
+    await savePlotToFirestore(plot);
+    clearForm();
+    await renderList();
+    alert('บันทึกพล็อตเรียบร้อย 💕');
+  });
+
+  clearFormBtn.addEventListener('click', clearForm);
+
+  deletePlotBtn.addEventListener('click', async()=>{
+    if (!currentEditingId) return;
+    if (!confirm('ลบพล็อตนี้จริงไหม?')) return;
+    await deletePlotFromFirestore(currentEditingId);
+    clearForm();
+    await renderList();
+  });
+
+  initAuthUI();
+</script>
 </body>
 </html>
