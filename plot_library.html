@@ -145,6 +145,7 @@
     getFirestore, doc, getDocs, setDoc, collection, query, orderBy, getDoc, deleteDoc
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
+  // === Firebase ===
   const firebaseConfig = {
     apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
     authDomain: "plumeo-475aa.firebaseapp.com",
@@ -159,8 +160,9 @@
   const auth = getAuth(app);
   const db   = getFirestore(app);
   const provider = new GoogleAuthProvider();
+  await setPersistence(auth, browserLocalPersistence);
 
-  // DOM
+  // === DOM refs ===
   const loginBtn   = document.getElementById('loginBtn');
   const logoutBtn  = document.getElementById('logoutBtn');
   const homeBtn    = document.getElementById('homeBtn');
@@ -174,6 +176,7 @@
   const resetLink      = document.getElementById('resetLink');
   const verifyLink     = document.getElementById('verifyLink');
   const closeAuth      = document.getElementById('closeAuth');
+  const roleBadge      = document.getElementById('roleBadge');
 
   const plotTitle  = document.getElementById('plotTitle');
   const plotTags   = document.getElementById('plotTags');
@@ -184,18 +187,18 @@
   const editingLabel  = document.getElementById('editingLabel');
   const plotsContainer= document.getElementById('plotsContainer');
   const emptyMsg      = document.getElementById('emptyMsg');
-  const roleBadge     = document.getElementById('roleBadge');
 
   let currentEditingId = null;
 
   const showAuth = () => { backdrop.style.display = 'flex'; };
   const hideAuth = () => { backdrop.style.display = 'none'; };
 
-  function uid(){
-    return 'plot-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  function uid() {
+    return 'plot-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   }
 
-  async function loadPlots(){
+  // ===== Firestore helpers =====
+  async function loadPlots() {
     const user = auth.currentUser;
     if (!user) return [];
     const q = query(collection(db, `users/${user.uid}/plots`), orderBy('updatedAt','desc'));
@@ -205,19 +208,20 @@
     return list;
   }
 
-  async function savePlotToFirestore(plot){
+  async function savePlotToFirestore(plot) {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) throw new Error('no-user');
     await setDoc(doc(db, `users/${user.uid}/plots/${plot.id}`), plot, { merge:true });
   }
 
-  async function deletePlotFromFirestore(id){
+  async function deletePlotFromFirestore(id) {
     const user = auth.currentUser;
     if (!user) return;
     await deleteDoc(doc(db, `users/${user.uid}/plots/${id}`));
   }
 
-  function clearForm(){
+  // ===== Form =====
+  function clearForm() {
     currentEditingId = null;
     plotTitle.value  = '';
     plotTags.value   = '';
@@ -226,20 +230,21 @@
     editingLabel.textContent = 'สร้างพล็อตใหม่';
   }
 
-  function fillForm(plot){
+  function fillForm(plot) {
     currentEditingId = plot.id;
     plotTitle.value  = plot.title || '';
-    plotTags.value   = (plot.tags || []).join(', ');
+    plotTags.value   = Array.isArray(plot.tags) ? plot.tags.join(', ') : '';
     plotBody.value   = plot.body || '';
     deletePlotBtn.style.display = 'inline-block';
     editingLabel.textContent = 'กำลังแก้ไขพล็อต';
   }
 
-  async function renderList(){
+  // ===== Render list =====
+  async function renderList() {
     plotsContainer.innerHTML = '';
-    const list = await loadPlots();
 
-    if (!list.length){
+    const list = await loadPlots();
+    if (!list.length) {
       emptyMsg.style.display = 'block';
       return;
     }
@@ -256,13 +261,15 @@
       const meta = document.createElement('div');
       meta.className = 'plot-meta';
       const date = new Date(plot.updatedAt || plot.createdAt || Date.now());
-      meta.textContent = 'อัปเดตล่าสุด: ' + date.toLocaleDateString('th-TH', {year:'numeric',month:'short',day:'numeric'});
+      meta.textContent =
+        'อัปเดตล่าสุด: ' +
+        date.toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
 
       const tagWrap = document.createElement('div');
       if (Array.isArray(plot.tags)) {
         plot.tags.filter(Boolean).forEach(t => {
           const b = document.createElement('span');
-          b.className='badge';
+          b.className = 'badge';
           b.textContent = t;
           tagWrap.appendChild(b);
         });
@@ -272,149 +279,161 @@
       body.className = 'plot-body';
       body.textContent = plot.body || '';
 
-      card.appendChild(title);
-      card.appendChild(meta);
-      card.appendChild(tagWrap);
-      card.appendChild(body);
-
+      card.append(title, meta, tagWrap, body);
       card.addEventListener('click', () => fillForm(plot));
-
       plotsContainer.appendChild(card);
     });
   }
 
-  async function initAuthUI(){
-    await setPersistence(auth, browserLocalPersistence);
+  // ===== Auth UI =====
+  loginBtn.addEventListener('click', showAuth);
+  closeAuth.addEventListener('click', hideAuth);
+  logoutBtn.addEventListener('click', async () => { await signOut(auth); location.reload(); });
+  homeBtn.addEventListener('click', () => location.href = 'index.html');
 
-    loginBtn.addEventListener('click', showAuth);
-    closeAuth.addEventListener('click', hideAuth);
-    logoutBtn.addEventListener('click', async ()=>{ await signOut(auth); location.reload(); });
-    homeBtn.addEventListener('click', ()=> location.href='index.html');
+  googleBtn.addEventListener('click', async () => {
+    try {
+      await signInWithPopup(auth, provider);
+      hideAuth();
+    } catch (err) {
+      alert(err.message || 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
+    }
+  });
 
-    googleBtn.addEventListener('click', async()=>{
-      try{
-        await signInWithPopup(auth,provider);
-        hideAuth();
-      }catch(err){
-        alert(err.message || 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
-      }
-    });
+  emailSignInBtn.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim();
+    const p = passInput.value || '';
+    if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+    try {
+      await signInWithEmailAndPassword(auth, e, p);
+      hideAuth();
+    } catch (err) {
+      alert(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
+    }
+  });
 
-    emailSignInBtn.addEventListener('click', async()=>{
-      const e=(emailInput.value||'').trim();
-      const p=passInput.value||'';
-      if(!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
-      try{
-        await signInWithEmailAndPassword(auth,e,p);
-        hideAuth();
-      }catch(err){
-        alert(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
-      }
-    });
+  emailSignUpBtn.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim();
+    const p = passInput.value || '';
+    if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, e, p);
+      await setDoc(doc(db, `users/${cred.user.uid}`), {
+        uid: cred.user.uid,
+        email: e,
+        role: 'member',
+        createdAt: Date.now()
+      }, { merge:true });
+      try { await sendEmailVerification(cred.user); } catch {}
+      hideAuth();
+    } catch (err) {
+      alert(err.message || 'สมัครสมาชิกไม่สำเร็จ');
+    }
+  });
 
-    emailSignUpBtn.addEventListener('click', async()=>{
-      const e=(emailInput.value||'').trim();
-      const p=passInput.value||'';
-      if(!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
-      try{
-        const cred = await createUserWithEmailAndPassword(auth,e,p);
-        await setDoc(doc(db,`users/${cred.user.uid}`),{
-          uid:cred.user.uid,
-          email:e,
-          role:'member',
-          createdAt:Date.now()
-        }, {merge:true});
-        try{ await sendEmailVerification(cred.user); }catch{}
-        hideAuth();
-      }catch(err){
-        alert(err.message || 'สมัครสมาชิกไม่สำเร็จ');
-      }
-    });
+  resetLink.addEventListener('click', async () => {
+    const e = (emailInput.value || '').trim();
+    if (!e) return alert('ใส่อีเมลก่อน');
+    try {
+      await sendPasswordResetEmail(auth, e);
+      alert('ส่งอีเมลตั้งรหัสผ่านใหม่แล้ว');
+    } catch (err) {
+      alert(err.message || 'ส่งอีเมลไม่สำเร็จ');
+    }
+  });
 
-    resetLink.addEventListener('click', async()=>{
-      const e=(emailInput.value||'').trim();
-      if(!e) return alert('ใส่อีเมลก่อน');
-      try{
-        await sendPasswordResetEmail(auth,e);
-        alert('ส่งอีเมลตั้งรหัสผ่านใหม่แล้ว');
-      }catch(err){
-        alert(err.message || 'ส่งอีเมลไม่สำเร็จ');
-      }
-    });
-
-    verifyLink.addEventListener('click', async()=>{
-      if(!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
-      try{
-        await sendEmailVerification(auth.currentUser);
-        alert('ส่งลิงก์ยืนยันแล้ว');
-      }catch(err){
-        alert(err.message || 'ส่งลิงก์ไม่สำเร็จ');
-      }
-    });
-
-    onAuthStateChanged(auth, async (user)=>{
-      if(user){
-        loginBtn.style.display='none';
-        logoutBtn.style.display='inline-block';
-
-        const profRef = doc(db,`users/${user.uid}`);
-        const profSnap= await getDoc(profRef);
-        if(!profSnap.exists()){
-          await setDoc(profRef,{
-            uid:user.uid,
-            email:user.email || '',
-            role:'member',
-            createdAt:Date.now()
-          },{merge:true});
-        }
-
-        const token = await user.getIdTokenResult(true);
-        const role  = token?.claims?.role || 'member';
-        if (role === 'admin' && roleBadge) roleBadge.textContent = '⭐ Admin Mode';
-
-        await renderList();
-      }else{
-        loginBtn.style.display='inline-block';
-        logoutBtn.style.display='none';
-        plotsContainer.innerHTML='';
-        emptyMsg.style.display='block';
-        clearForm();
-        showAuth();
-      }
-    });
-  }
-
-  savePlotBtn.addEventListener('click', async()=>{
-    const title = plotTitle.value.trim() || 'พล็อตไม่มีชื่อ';
-    const tags  = plotTags.value.split(',').map(s=>s.trim()).filter(Boolean);
-    const body  = plotBody.value.trim();
+  verifyLink.addEventListener('click', async () => {
     if (!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
+    try {
+      await sendEmailVerification(auth.currentUser);
+      alert('ส่งลิงก์ยืนยันแล้ว');
+    } catch (err) {
+      alert(err.message || 'ส่งลิงก์ไม่สำเร็จ');
+    }
+  });
 
-    const now = Date.now();
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      loginBtn.style.display  = 'none';
+      logoutBtn.style.display = 'inline-block';
+
+      const profRef  = doc(db, `users/${user.uid}`);
+      const profSnap = await getDoc(profRef);
+      if (!profSnap.exists()) {
+        await setDoc(profRef, {
+          uid: user.uid,
+          email: user.email || '',
+          role: 'member',
+          createdAt: Date.now()
+        }, { merge:true });
+      }
+
+      const token = await user.getIdTokenResult(true);
+      const role  = token?.claims?.role || 'member';
+      if (role === 'admin' && roleBadge) roleBadge.textContent = '⭐ Admin Mode';
+
+      await renderList();
+    } else {
+      loginBtn.style.display  = 'inline-block';
+      logoutBtn.style.display = 'none';
+      plotsContainer.innerHTML = '';
+      emptyMsg.style.display = 'block';
+      clearForm();
+      showAuth();
+    }
+  });
+
+  // ===== ปุ่มบันทึก / ล้าง / ลบ =====
+  savePlotBtn.addEventListener('click', async () => {
+    if (!auth.currentUser) {
+      alert('ต้องเข้าสู่ระบบก่อนบันทึกพล็อต');
+      showAuth();
+      return;
+    }
+
+    const title = plotTitle.value.trim() || 'พล็อตไม่มีชื่อ';
+    const tags  = plotTags.value.split(',').map(s => s.trim()).filter(Boolean);
+    const body  = plotBody.value.trim();
+    const now   = Date.now();
+
+    // ดึง createdAt เดิมถ้ามี (กัน undefined)
+    let createdAt = now;
+    if (currentEditingId) {
+      const ref  = doc(db, `users/${auth.currentUser.uid}/plots/${currentEditingId}`);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        createdAt = snap.data().createdAt || now;
+      }
+    }
+
     const plot = {
       id: currentEditingId || uid(),
       title, tags, body,
-      createdAt: currentEditingId ? undefined : now,
+      createdAt,
       updatedAt: now
     };
 
-    await savePlotToFirestore(plot);
-    clearForm();
-    await renderList();
-    alert('บันทึกพล็อตเรียบร้อย 💕');
+    try {
+      await savePlotToFirestore(plot);
+      clearForm();
+      await renderList();
+      alert('บันทึกพล็อตเรียบร้อย 💕');
+    } catch (err) {
+      console.error(err);
+      alert('บันทึกพล็อตไม่สำเร็จ: ' + (err.message || ''));
+    }
   });
 
   clearFormBtn.addEventListener('click', clearForm);
 
-  deletePlotBtn.addEventListener('click', async()=>{
+  deletePlotBtn.addEventListener('click', async () => {
     if (!currentEditingId) return;
     if (!confirm('ลบพล็อตนี้จริงไหม?')) return;
     await deletePlotFromFirestore(currentEditingId);
     clearForm();
     await renderList();
   });
-
-  initAuthUI();
 </script>
+
 </body>
 </html>
