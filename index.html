@@ -49,10 +49,12 @@
   <div class="top-controls"><h1>🧁 My Sweet Story</h1></div>
   <div class="top-controls">
     <!-- เริ่มต้น: ซ่อนปุ่มพล็อต/เขียนเรื่องไว้ก่อน -->
-    <button class="btn" id="plotBtn" style="display:none">📚 คลังพล็อตของฉัน</button>
+    <button class="btn" id="newPlotBtn" style="display:none">🍰 วางพล็อตใหม่</button>
+    <button class="btn" id="plotBtn" style="display:none">📚 คลังพล็อต</button>
     <button class="btn" id="newBtn"  style="display:none">✏️ เขียนเรื่องใหม่</button>
     <button class="btn" id="loginBtn">🔑 เข้าสู่ระบบ</button>
     <button class="btn" id="logoutBtn" style="display:none">🚪 ออกจากระบบ</button>
+
   </div>
 </header>
 
@@ -116,10 +118,12 @@
   const db   = getFirestore(app);
   const provider = new GoogleAuthProvider();
 
-  const loginBtn   = document.getElementById("loginBtn");
-  const logoutBtn  = document.getElementById("logoutBtn");
-  const plotBtn    = document.getElementById("plotBtn");
-  const newBtn     = document.getElementById("newBtn");
+  const loginBtn   = document.getElementById('loginBtn');
+  const logoutBtn  = document.getElementById('logoutBtn');
+  const plotBtn    = document.getElementById('plotBtn');
+  const newPlotBtn = document.getElementById('newPlotBtn'); // ปุ่มวางพล็อตใหม่
+  const newBtn     = document.getElementById('newBtn');      // เขียนนิยาย
+
 
   const backdrop   = document.getElementById("authBackdrop");
   const emailInput = document.getElementById("authEmail");
