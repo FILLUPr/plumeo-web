@@ -16,13 +16,34 @@
     }
     header {
       background-color: #f9e0c3;
-      padding: 20px;
-      text-align: center;
+      padding: 16px 20px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+    header .title {
       font-size: 2rem;
       font-weight: bold;
       color: #8b5e3c;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
     }
+    header .auth-area{
+      font-size:14px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:#8b5e3c;
+    }
+    header .auth-area button{
+      padding:6px 10px;
+      border:none;
+      border-radius:10px;
+      background:#f4b8b8;
+      color:#fff;
+      cursor:pointer;
+      font-size:14px;
+    }
+
     main {
       max-width: 800px;
       margin: 30px auto;
@@ -66,10 +87,49 @@
       font-size: 0.9rem;
       color: #8c7760;
     }
+
+    /* Auth Modal เหมือนหน้าอื่น ๆ */
+    .auth-modal-backdrop{
+      position:fixed;inset:0;
+      background:rgba(0,0,0,.35);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+    }
+    .auth-modal{
+      width:min(420px,92vw);
+      background:#FFF;
+      border-radius:14px;
+      padding:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);
+      font-family:'Cordia New',sans-serif;
+    }
+    .auth-modal h3{margin:0 0 8px 0;color:#C97381;font-size:22px}
+    .auth-modal input{
+      width:100%;padding:10px;border-radius:8px;
+      border:2px solid #F4C2C2;margin:6px 0;font-size:14pt
+    }
+    .auth-row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+    .btn.primary{padding:8px 12px;border:none;border-radius:10px;
+      background:linear-gradient(180deg,#F1A9B6,#D97288);color:#fff;cursor:pointer}
+    .btn.ghost{padding:8px 12px;border-radius:10px;border:2px solid #F4B2C1;
+      background:#fff;color:#8b4b51;cursor:pointer}
+    .auth-note{font-size:13px;color:#8a5b5e;margin-top:6px}
+    .link{color:#C97381; cursor:pointer; text-decoration:underline;}
+    .sep-center{display:flex;align-items:center;gap:8px;margin:8px 0}
+    .sep-center::before,.sep-center::after{content:"";flex:1;height:1px;background:#f0cfd6}
   </style>
 </head>
 <body>
-  <header>🍰 วางพล็อตเรื่อง</header>
+  <header>
+    <div class="title">🍰 วางพล็อตเรื่อง</div>
+    <div class="auth-area">
+      <span id="userEmail"></span>
+      <button id="loginBtn">🔑 เข้าสู่ระบบ</button>
+      <button id="logoutBtn" style="display:none">🚪 ออกจากระบบ</button>
+    </div>
+  </header>
 
   <main>
     <section>
@@ -122,165 +182,382 @@
 
     <div style="text-align:center;">
       <button onclick="savePlot()">💾 บันทึกพล็อต</button>
-  <button onclick="clearPlot()">🧹 เริ่มพล็อตใหม่</button>
-  <button onclick="window.location.href='plot_library.html'">🏠 กลับคลังพล็อต</button>
-<button onclick="downloadWord()">📄 ดาวน์โหลดเป็น Word</button>
+      <button onclick="clearPlot()">🧹 เริ่มพล็อตใหม่</button>
+      <button onclick="window.location.href='plot_library.html'">🏠 กลับคลังพล็อต</button>
+      <button onclick="downloadWord()">📄 ดาวน์โหลดเป็น Word</button>
     </div>
   </main>
 
   <footer>© 2025 My Sweet Story — Sweet Ideas Bloom Here ✨</footer>
 
-  <script>
-  // โหลดข้อมูลพล็อตเดิม (ถ้ามี)
-  window.onload = function() {
-    let activeKey = localStorage.getItem('activePlot') || 'plotData';
-    const saved = localStorage.getItem(activeKey);
-    if (saved) {
-      const p = JSON.parse(saved);
-      for (const key in p) {
-        if (document.getElementById(key)) {
-          document.getElementById(key).value = p[key];
-        }
-      }
-    }
-  };
+  <!-- Auth Modal -->
+  <div class="auth-modal-backdrop" id="authBackdrop">
+    <div class="auth-modal">
+      <h3>เข้าสู่ระบบ</h3>
+      <input id="authEmail" type="email" placeholder="อีเมล" />
+      <input id="authPassword" type="password" placeholder="รหัสผ่าน" />
+      <div class="auth-row">
+        <button class="btn primary" id="emailSignInBtn">เข้าสู่ระบบ</button>
+        <button class="btn ghost" id="emailSignUpBtn">สมัครสมาชิก</button>
+      </div>
+      <div class="sep-center"><span>หรือ</span></div>
+      <button class="btn primary" id="googleBtn" style="width:100%">เข้าสู่ระบบด้วย Google</button>
+      <div class="auth-note">
+        ลืมรหัสผ่าน? <span class="link" id="resetLink">กดที่นี่</span><br/>
+        ยังไม่ยืนยันอีเมล? <span class="link" id="verifyLink">ส่งลิงก์ยืนยันอีกครั้ง</span>
+      </div>
+      <div class="auth-row" style="margin-top:8px">
+        <span></span>
+        <button class="btn ghost" id="closeAuth">ปิด</button>
+      </div>
+    </div>
+  </div>
 
-  // ฟังก์ชันบันทึกพล็อต
-  function savePlot() {
-    const fields = ['title','penName','category','synopsis','theme','core','inspiration',
-                    'beginning','inciting','midpoint','climax','ending',
-                    'characters','timeline','notes'];
-    const plot = {};
-    fields.forEach(id => plot[id] = document.getElementById(id).value);
-    plot.date = new Date().toLocaleString("th-TH");
-    const key = localStorage.getItem('activePlot') || 'plot_' + Date.now();
-    localStorage.setItem(key, JSON.stringify(plot));
-    localStorage.setItem('activePlot', key);
-    alert('บันทึกพล็อตเรียบร้อยแล้ว 🍪✨');
-  }
+  <!-- Firebase + Firestore -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut,
+      onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+      sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getFirestore, doc, setDoc, getDoc
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  // ฟังก์ชันล้างพล็อต
-  function clearPlot() {
-    if (confirm('แน่ใจหรือไม่ว่าต้องการเริ่มพล็อตใหม่ทั้งหมด?')) {
-      localStorage.removeItem('activePlot');
-      document.querySelectorAll('input, textarea, select').forEach(el => el.value = '');
-      alert('ล้างข้อมูลพล็อตแล้ว พร้อมเริ่มใหม่ 🎀');
-    }
-  }
-</script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpVTKy5Wi6IZ3VEhp6fUwLoJ3KYtuYxgs",
+      authDomain: "plumeo-475aa.firebaseapp.com",
+      projectId: "plumeo-475aa",
+      storageBucket: "plumeo-475aa.firebasestorage.app",
+      messagingSenderId: "452998025243",
+      appId: "1:452998025243:web:27d16edb8360cda2cc711e",
+      measurementId: "G-ZFXVG7W436"
+    };
 
-<script src="https://cdn.jsdelivr.net/npm/docx@8.0.0/build/index.min.js"></script>
-<script>
-  async function downloadWord() {
-    const fields = ['title','penName','category','synopsis','theme','core','inspiration',
-                    'beginning','inciting','midpoint','climax','ending',
-                    'characters','timeline','notes'];
-    const data = {};
-    fields.forEach(id => data[id] = document.getElementById(id).value);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+    await setPersistence(auth, browserLocalPersistence);
 
-    const { Document, Packer, Paragraph, TextRun, Footer } = docx;
+    // ===== DOM =====
+    const loginBtn   = document.getElementById('loginBtn');
+    const logoutBtn  = document.getElementById('logoutBtn');
+    const userEmailEl= document.getElementById('userEmail');
 
-    function divider() {
-      return new Paragraph({
-        children: [new TextRun({ text: "❋ ❋ ❋ ❋ ❋", color: "b08b6a", size: 20 })],
-        alignment: "center",
-        spacing: { before: 200, after: 200 },
-      });
-    }
+    const backdrop   = document.getElementById('authBackdrop');
+    const emailInput = document.getElementById('authEmail');
+    const passInput  = document.getElementById('authPassword');
+    const emailSignInBtn = document.getElementById('emailSignInBtn');
+    const emailSignUpBtn = document.getElementById('emailSignUpBtn');
+    const googleBtn      = document.getElementById('googleBtn');
+    const resetLink      = document.getElementById('resetLink');
+    const verifyLink     = document.getElementById('verifyLink');
+    const closeAuth      = document.getElementById('closeAuth');
 
-    function sectionTitle(title) {
-      return new Paragraph({
-        children: [new TextRun({ text: title, bold: true, size: 30, color: "7a4b2a" })],
-        spacing: { before: 200, after: 100 },
-      });
-    }
+    const showAuth = () => { backdrop.style.display = 'flex'; };
+    const hideAuth = () => { backdrop.style.display = 'none'; };
 
-    function textLine(label, value) {
-      return new Paragraph({
-        children: [
-          new TextRun({ text: label + ": ", bold: true, color: "5a4632" }),
-          new TextRun({ text: value || "-", color: "5a4632" })
-        ],
-        spacing: { after: 120 },
-      });
-    }
+    loginBtn.addEventListener('click', showAuth);
+    closeAuth.addEventListener('click', hideAuth);
 
-// ✅ เพิ่ม footer ให้ทุกหน้า
-const footer = new Footer({
-  children: [
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "© 2025 My Sweet Story — Sweet Ideas Bloom Here ✨",
-          italics: true,
-          size: 20,
-          color: "8b5e3c"
-        }),
-      ],
-      alignment: "center",
-    }),
-  ],
-});
-
-    const doc = new Document({
-      sections: [{
-        properties: {},
-footers: { default: footer },
-        children: [
-          new Paragraph({
-            children: [new TextRun({ text: "🍰 My Sweet Story", bold: true, size: 40, color: "8b5e3c" })],
-            alignment: "center",
-            spacing: { after: 200 },
-          }),
-          new Paragraph({
-            children: [new TextRun({ text: "บันทึกพล็อตนิยาย", italics: true, size: 28, color: "a67856" })],
-            alignment: "center",
-            spacing: { after: 300 },
-          }),
-          divider(),
-          textLine("ชื่อเรื่อง", data.title),
-          textLine("นามปากกา", data.penName),
-          textLine("หมวดหมู่", data.category),
-          textLine("คำโปรย", data.synopsis),
-          divider(),
-
-          sectionTitle("🌷 ธีมและแนวคิดหลัก"),
-          textLine("ธีมหลัก", data.theme),
-          textLine("ประโยคใจกลางของเรื่อง", data.core),
-          textLine("แรงบันดาลใจ", data.inspiration),
-          divider(),
-
-          sectionTitle("🪄 โครงเรื่องหลัก"),
-          textLine("1. จุดเริ่มต้น (Beginning)", data.beginning),
-          textLine("2. เหตุการณ์กระตุ้น (Inciting Incident)", data.inciting),
-          textLine("3. จุดหักเหกลางเรื่อง (Midpoint)", data.midpoint),
-          textLine("4. จุดไคลแมกซ์ (Climax)", data.climax),
-          textLine("5. ตอนจบ (Ending)", data.ending),
-          divider(),
-
-          sectionTitle("🎀 ตัวละครหลัก"),
-          new Paragraph({ text: data.characters || "-", spacing: { after: 150 }, color: "5a4632" }),
-          divider(),
-
-          sectionTitle("📜 เส้นเวลาเหตุการณ์"),
-          new Paragraph({ text: data.timeline || "-", spacing: { after: 150 }, color: "5a4632" }),
-          divider(),
-
-          sectionTitle("📝 โน้ตส่วนตัว"),
-          new Paragraph({ text: data.notes || "-", spacing: { after: 150 }, color: "5a4632" }),
-          divider(),
-        ],
-      }],
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+      location.reload();
     });
 
-    const blob = await Packer.toBlob(doc);
-    const fileName = `Plot_${(data.title || "Untitled").replace(/\s+/g, "_")}.docx`;
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = fileName;
-    link.click();
-  }
-</script>
+    googleBtn.addEventListener('click', async () => {
+      try {
+        await signInWithPopup(auth, provider);
+        hideAuth();
+      } catch (err) {
+        alert(err.message || 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
+      }
+    });
 
+    emailSignInBtn.addEventListener('click', async () => {
+      const e = (emailInput.value || '').trim();
+      const p = passInput.value || '';
+      if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+      try {
+        await signInWithEmailAndPassword(auth, e, p);
+        hideAuth();
+      } catch (err) {
+        alert(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
+      }
+    });
+
+    emailSignUpBtn.addEventListener('click', async () => {
+      const e = (emailInput.value || '').trim();
+      const p = passInput.value || '';
+      if (!e || !p) return alert('กรอกอีเมลและรหัสผ่าน');
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, e, p);
+        await setDoc(doc(db, `users/${cred.user.uid}`), {
+          uid: cred.user.uid,
+          email: e,
+          role: 'member',
+          createdAt: Date.now()
+        }, { merge: true });
+        try { await sendEmailVerification(cred.user); } catch {}
+        hideAuth();
+      } catch (err) {
+        alert(err.message || 'สมัครสมาชิกไม่สำเร็จ');
+      }
+    });
+
+    resetLink.addEventListener('click', async () => {
+      const e = (emailInput.value || '').trim();
+      if (!e) return alert('ใส่อีเมลก่อน');
+      try {
+        await sendPasswordResetEmail(auth, e);
+        alert('ส่งอีเมลตั้งรหัสผ่านใหม่แล้ว');
+      } catch (err) {
+        alert(err.message || 'ส่งอีเมลไม่สำเร็จ');
+      }
+    });
+
+    verifyLink.addEventListener('click', async () => {
+      if (!auth.currentUser) return alert('ต้องเข้าสู่ระบบก่อน');
+      try {
+        await sendEmailVerification(auth.currentUser);
+        alert('ส่งลิงก์ยืนยันแล้ว');
+      } catch (err) {
+        alert(err.message || 'ส่งลิงก์ยืนยันไม่สำเร็จ');
+      }
+    });
+
+    // ===== Logic พล็อต =====
+    const FIELD_IDS = [
+      'title','penName','category','synopsis','theme','core','inspiration',
+      'beginning','inciting','midpoint','climax','ending',
+      'characters','timeline','notes'
+    ];
+
+    function getPlotFromForm() {
+      const obj = {};
+      FIELD_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        obj[id] = el ? el.value : '';
+      });
+      return obj;
+    }
+
+    function fillForm(data) {
+      FIELD_IDS.forEach(id => {
+        if (document.getElementById(id) && data[id] != null) {
+          document.getElementById(id).value = data[id];
+        }
+      });
+    }
+
+    function clearFormOnly() {
+      FIELD_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    }
+
+    let currentPlotId = null;
+
+    const params = new URLSearchParams(location.search);
+    const urlId  = params.get('id');
+    if (urlId) currentPlotId = urlId;
+
+    async function loadPlotIfAny() {
+      const user = auth.currentUser;
+      if (!user || !currentPlotId) return;
+
+      try {
+        const ref = doc(db, `users/${user.uid}/plots/${currentPlotId}`);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          fillForm(snap.data());
+        }
+      } catch (err) {
+        console.error('load plot error', err);
+      }
+    }
+
+    async function savePlotImpl() {
+      const user = auth.currentUser;
+      if (!user) {
+        showAuth();
+        return;
+      }
+
+      const now = Date.now();
+      if (!currentPlotId) {
+        currentPlotId = 'plot-' + now + '-' + Math.random().toString(36).slice(2,8);
+      }
+
+      const data = {
+        ...getPlotFromForm(),
+        id: currentPlotId,
+        updatedAt: now
+      };
+
+      try {
+        const ref = doc(db, `users/${user.uid}/plots/${currentPlotId}`);
+        await setDoc(ref, data, { merge: true });
+        alert('บันทึกพล็อตเรียบร้อยแล้ว 🍪✨');
+        history.replaceState(null, '', 'plot.html?id=' + encodeURIComponent(currentPlotId));
+      } catch (err) {
+        console.error(err);
+        alert('บันทึกพล็อตไม่สำเร็จ');
+      }
+    }
+
+    function clearPlotImpl() {
+      if (confirm('แน่ใจหรือไม่ว่าต้องการเริ่มพล็อตใหม่ทั้งหมด?')) {
+        clearFormOnly();
+      }
+    }
+
+    // expose ให้ปุ่ม inline ใช้ได้
+    window.savePlot  = savePlotImpl;
+    window.clearPlot = clearPlotImpl;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        userEmailEl.textContent = user.email || '';
+        loginBtn.style.display  = 'none';
+        logoutBtn.style.display = 'inline-block';
+
+        // ensure profile
+        const profRef  = doc(db, `users/${user.uid}`);
+        const profSnap = await getDoc(profRef);
+        if (!profSnap.exists()) {
+          await setDoc(profRef, {
+            uid: user.uid,
+            email: user.email || '',
+            role: 'member',
+            createdAt: Date.now()
+          }, { merge:true });
+        }
+
+        await loadPlotIfAny();
+      } else {
+        userEmailEl.textContent = '';
+        loginBtn.style.display  = 'inline-block';
+        logoutBtn.style.display = 'none';
+      }
+    });
+
+  </script>
+
+  <!-- docx สำหรับ export Word (เหมือนเดิม) -->
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.0.0/build/index.min.js"></script>
+  <script>
+    async function downloadWord() {
+      const fields = ['title','penName','category','synopsis','theme','core','inspiration',
+                      'beginning','inciting','midpoint','climax','ending',
+                      'characters','timeline','notes'];
+      const data = {};
+      fields.forEach(id => data[id] = document.getElementById(id).value);
+
+      const { Document, Packer, Paragraph, TextRun, Footer } = docx;
+
+      function divider() {
+        return new Paragraph({
+          children: [new TextRun({ text: "❋ ❋ ❋ ❋ ❋", color: "b08b6a", size: 20 })],
+          alignment: "center",
+          spacing: { before: 200, after: 200 },
+        });
+      }
+
+      function sectionTitle(title) {
+        return new Paragraph({
+          children: [new TextRun({ text: title, bold: true, size: 30, color: "7a4b2a" })],
+          spacing: { before: 200, after: 100 },
+        });
+      }
+
+      function textLine(label, value) {
+        return new Paragraph({
+          children: [
+            new TextRun({ text: label + ": ", bold: true, color: "5a4632" }),
+            new TextRun({ text: value || "-", color: "5a4632" })
+          ],
+          spacing: { after: 120 },
+        });
+      }
+
+      const footer = new Footer({
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "© 2025 My Sweet Story — Sweet Ideas Bloom Here ✨",
+                italics: true,
+                size: 20,
+                color: "8b5e3c"
+              }),
+            ],
+            alignment: "center",
+          }),
+        ],
+      });
+
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          footers: { default: footer },
+          children: [
+            new Paragraph({
+              children: [new TextRun({ text: "🍰 My Sweet Story", bold: true, size: 40, color: "8b5e3c" })],
+              alignment: "center",
+              spacing: { after: 200 },
+            }),
+            new Paragraph({
+              children: [new TextRun({ text: "บันทึกพล็อตนิยาย", italics: true, size: 28, color: "a67856" })],
+              alignment: "center",
+              spacing: { after: 300 },
+            }),
+            divider(),
+            textLine("ชื่อเรื่อง", data.title),
+            textLine("นามปากกา", data.penName),
+            textLine("หมวดหมู่", data.category),
+            textLine("คำโปรย", data.synopsis),
+            divider(),
+
+            sectionTitle("🌷 ธีมและแนวคิดหลัก"),
+            textLine("ธีมหลัก", data.theme),
+            textLine("ประโยคใจกลางของเรื่อง", data.core),
+            textLine("แรงบันดาลใจ", data.inspiration),
+            divider(),
+
+            sectionTitle("🪄 โครงเรื่องหลัก"),
+            textLine("1. จุดเริ่มต้น (Beginning)", data.beginning),
+            textLine("2. เหตุการณ์กระตุ้น (Inciting Incident)", data.inciting),
+            textLine("3. จุดหักเหกลางเรื่อง (Midpoint)", data.midpoint),
+            textLine("4. จุดไคลแมกซ์ (Climax)", data.climax),
+            textLine("5. ตอนจบ (Ending)", data.ending),
+            divider(),
+
+            sectionTitle("🎀 ตัวละครหลัก"),
+            new Paragraph({ text: data.characters || "-", spacing: { after: 150 }, color: "5a4632" }),
+            divider(),
+
+            sectionTitle("📜 เส้นเวลาเหตุการณ์"),
+            new Paragraph({ text: data.timeline || "-", spacing: { after: 150 }, color: "5a4632" }),
+            divider(),
+
+            sectionTitle("📝 โน้ตส่วนตัว"),
+            new Paragraph({ text: data.notes || "-", spacing: { after: 150 }, color: "5a4632" }),
+            divider(),
+          ],
+        }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const fileName = `Plot_${(data.title || "Untitled").replace(/\s+/g, "_")}.docx`;
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      link.click();
+    }
+  </script>
 </body>
 </html>
