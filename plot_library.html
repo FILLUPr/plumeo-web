@@ -98,6 +98,12 @@
       font-size: 0.9rem;
       color: #8c7760;
     }
+    #debug {
+      margin-top:10px;
+      font-size:12px;
+      color:#b54;
+      white-space:pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -113,6 +119,7 @@
   <main>
     <h2>พล็อตทั้งหมดของฉัน 🍪</h2>
     <div id="plotList" class="plot-list"></div>
+    <div id="debug"></div>
 
     <div style="text-align:center; margin-top:20px;">
       <button id="newPlotBtn">🍰 สร้างพล็อตใหม่</button>
@@ -129,7 +136,7 @@
       setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import {
-      getFirestore, collection, query, orderBy, getDocs, deleteDoc, doc, getDoc, setDoc
+      getFirestore, collection, getDocs, deleteDoc, doc, getDoc, setDoc
     } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -152,6 +159,12 @@
     const userEmailEl = document.getElementById('userEmail');
     const plotList    = document.getElementById('plotList');
     const newPlotBtn  = document.getElementById('newPlotBtn');
+    const debugEl     = document.getElementById('debug');
+
+    function logDebug(msg) {
+      console.log(msg);
+      debugEl.textContent += msg + "\n";
+    }
 
     loginBtn.addEventListener('click', () => {
       window.location.href = 'index.html';
@@ -167,59 +180,67 @@
     });
 
     async function loadPlots(user) {
-      plotList.innerHTML = '';
+      try {
+        plotList.innerHTML = '';
+        debugEl.textContent = '';
+        logDebug('โหลดพล็อตของ uid: ' + user.uid);
 
-      const q = query(
-        collection(db, `users/${user.uid}/plots`),
-        orderBy('updatedAt', 'desc')
-      );
-      const snap = await getDocs(q);
+        // 👉 ไม่ใส่ orderBy ให้มันง่ายสุด ๆ ก่อน
+        const colRef = collection(db, `users/${user.uid}/plots`);
+        const snap   = await getDocs(colRef);
 
-      if (snap.empty) {
-        plotList.innerHTML = '<div class="empty">ยังไม่มีพล็อตที่บันทึกไว้ 🍪</div>';
-        return;
+        logDebug('จำนวนเอกสารที่อ่านได้: ' + snap.size);
+
+        if (snap.empty) {
+          plotList.innerHTML = '<div class="empty">ยังไม่มีพล็อตที่บันทึกไว้ 🍪</div>';
+          return;
+        }
+
+        snap.forEach(d => {
+          const p = d.data();
+          const div = document.createElement('div');
+          div.className = 'plot-item';
+
+          const info = document.createElement('div');
+          info.className = 'plot-info';
+          const dateStr = p.updatedAt
+            ? new Date(p.updatedAt).toLocaleString('th-TH')
+            : 'ไม่ระบุ';
+
+          info.innerHTML = `
+            <strong>📖 ${p.title || "(ไม่มีชื่อเรื่อง)"}</strong><br>
+            <small>แก้ไขล่าสุด: ${dateStr}</small>
+          `;
+
+          const btnWrap = document.createElement('div');
+
+          const openBtn = document.createElement('button');
+          openBtn.textContent = 'เปิดพล็อต';
+          openBtn.onclick = () => {
+            window.location.href = 'plot.html?id=' + encodeURIComponent(d.id);
+          };
+
+          const delBtn = document.createElement('button');
+          delBtn.textContent = 'ลบ';
+          delBtn.onclick = async () => {
+            if (confirm('ลบพล็อตนี้แน่ใจไหม?')) {
+              await deleteDoc(doc(db, `users/${user.uid}/plots/${d.id}`));
+              await loadPlots(user);
+            }
+          };
+
+          btnWrap.appendChild(openBtn);
+          btnWrap.appendChild(delBtn);
+
+          div.appendChild(info);
+          div.appendChild(btnWrap);
+          plotList.appendChild(div);
+        });
+      } catch (err) {
+        console.error(err);
+        plotList.innerHTML = '<div class="empty">อ่านพล็อตไม่สำเร็จ 🥲</div>';
+        logDebug('ERROR: ' + (err.message || err));
       }
-
-      snap.forEach(d => {
-        const p = d.data();
-        const div = document.createElement('div');
-        div.className = 'plot-item';
-
-        const info = document.createElement('div');
-        info.className = 'plot-info';
-        const dateStr = p.updatedAt
-          ? new Date(p.updatedAt).toLocaleString('th-TH')
-          : 'ไม่ระบุ';
-
-        info.innerHTML = `
-          <strong>📖 ${p.title || "(ไม่มีชื่อเรื่อง)"}</strong><br>
-          <small>แก้ไขล่าสุด: ${dateStr}</small>
-        `;
-
-        const btnWrap = document.createElement('div');
-
-        const openBtn = document.createElement('button');
-        openBtn.textContent = 'เปิดพล็อต';
-        openBtn.onclick = () => {
-          window.location.href = 'plot.html?id=' + encodeURIComponent(d.id);
-        };
-
-        const delBtn = document.createElement('button');
-        delBtn.textContent = 'ลบ';
-        delBtn.onclick = async () => {
-          if (confirm('ลบพล็อตนี้แน่ใจไหม?')) {
-            await deleteDoc(doc(db, `users/${user.uid}/plots/${d.id}`));
-            await loadPlots(user);
-          }
-        };
-
-        btnWrap.appendChild(openBtn);
-        btnWrap.appendChild(delBtn);
-
-        div.appendChild(info);
-        div.appendChild(btnWrap);
-        plotList.appendChild(div);
-      });
     }
 
     onAuthStateChanged(auth, async (user) => {
@@ -227,8 +248,9 @@
         userEmailEl.textContent = user.email || '';
         loginBtn.style.display  = 'none';
         logoutBtn.style.display = 'inline-block';
+        logDebug('ล็อกอินแล้ว: ' + (user.email || user.uid));
 
-        // ensure profile (ให้ตรงกับหน้าที่เหลือ)
+        // ensure profile ให้ตรงกับระบบเดิม
         const profRef  = doc(db, `users/${user.uid}`);
         const profSnap = await getDoc(profRef);
         if (!profSnap.exists()) {
@@ -246,6 +268,7 @@
         loginBtn.style.display  = 'inline-block';
         logoutBtn.style.display = 'none';
         plotList.innerHTML = '<div class="empty">ต้องเข้าสู่ระบบก่อนนะคะ 🍪</div>';
+        logDebug('ยังไม่ล็อกอิน');
       }
     });
   </script>
