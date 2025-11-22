@@ -133,6 +133,9 @@
   import {
     getFirestore, doc, getDoc, setDoc
   } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+  import {
+    Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer, PageOrientation
+  } from "https://cdn.jsdelivr.net/npm/docx@8.5.0/+esm";
 
   // ---------------- Firebase ----------------
   const firebaseConfig = {
@@ -154,10 +157,6 @@
   // ---------------- ตัวช่วยทั่วไป ----------------
   const params    = new URLSearchParams(location.search);
   let currentId   = params.get("id") || null;
-
-  const FIELD_IDS = [
-    "title","author","cat","blurb","inspiration","characters"
-  ];
 
   function uid() {
     return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
@@ -183,7 +182,6 @@
     document.getElementById("inspiration").value  = story.inspiration || "";
     document.getElementById("characters").value   = story.characters || "";
 
-    // ล้างตอนเก่าแล้วใส่ใหม่
     const wrap = document.getElementById("chapters");
     wrap.innerHTML = "";
     (story.chapters || [""]).forEach(text => addChapter(text));
@@ -217,7 +215,6 @@
       });
   }
 
-  // ลบตอนด้วย event delegation
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".remove-chapter");
     if (!btn) return;
@@ -229,13 +226,10 @@
     }
   });
 
-  // ปุ่มเพิ่มตอน (อันที่กดไม่ได้) – ผูกใหม่ให้แน่นอน
   const addChapterBtn = document.getElementById("addChapterBtn");
   if (addChapterBtn) {
     addChapterBtn.addEventListener("click", () => addChapter(""));
   }
-
-  // ถ้ายังไม่มีตอนเลย ให้มีตอนแรกมาให้
   if (!document.querySelector("#chapters .section.chapter")) {
     addChapter("");
   }
@@ -332,7 +326,7 @@
   }
 
   async function loadStory(user) {
-    if (!currentId) return; // ไม่มี id → เรื่องใหม่
+    if (!currentId) return;
     const snap = await getDoc(storyRef(user.uid, currentId));
     if (snap.exists()) {
       fillForm(snap.data());
@@ -379,13 +373,150 @@
     location.href = "index.html";
   });
 
+  // ---------------- Export Word (.docx) ----------------
+  const H1 = (text) => new Paragraph({
+    children: [new TextRun({ text, bold: true })],
+    heading: HeadingLevel.HEADING_1,
+    spacing: { after: 200 },
+  });
+
+  const H2 = (text) => new Paragraph({
+    children: [new TextRun({ text, bold: true })],
+    heading: HeadingLevel.HEADING_2,
+    spacing: { before: 160, after: 120 },
+  });
+
+  const P = (text = "", { after = 120, center = false, italics = false } = {}) =>
+    new Paragraph({
+      alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
+      spacing: { after },
+      children: [new TextRun({ text, italics })],
+    });
+
+  const Bullet = (text) => new Paragraph({
+    text,
+    bullet: { level: 0 },
+    spacing: { after: 80 },
+  });
+
+  function buildDocFromForm() {
+    const story = readForm();
+    const chapters = story.chapters.map((t, i) => ({ idx: i + 1, text: t || "" }));
+
+    const children = [];
+
+    // Header
+    children.push(H1("My Sweet Story"));
+    children.push(
+      new Paragraph({
+        spacing: { after: 160 },
+        children: [
+          new TextRun({ text: "ชื่อเรื่อง : ", bold: true }),
+          new TextRun({ text: story.title || "Untitled" }),
+        ],
+      })
+    );
+    children.push(
+      new Paragraph({
+        spacing: { after: 80 },
+        children: [
+          new TextRun({ text: "ผู้เขียน : ", bold: true }),
+          new TextRun({ text: story.author || "-" }),
+        ],
+      })
+    );
+    if (story.category) {
+      children.push(
+        new Paragraph({
+          spacing: { after: 80 },
+          children: [
+            new TextRun({ text: "หมวดหมู่ : ", bold: true }),
+            new TextRun({ text: story.category }),
+          ],
+        })
+      );
+    }
+    children.push(
+      P(`วันที่พิมพ์ : ${new Date().toLocaleDateString("th-TH")}`, { after: 200 })
+    );
+
+    // Inspiration
+    if (story.inspiration) {
+      children.push(H2("แรงบันดาลใจ 🍓"));
+      story.inspiration.split(/\r?\n/).forEach(line => children.push(P(line)));
+    }
+
+    // Characters
+    if (story.characters) {
+      const lines = story.characters.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if (lines.length) {
+        children.push(H2("ตัวละคร 🧸"));
+        lines.forEach(line => children.push(Bullet(line)));
+      }
+    }
+
+    // Blurb
+    if (story.blurb) {
+      children.push(H2("คำโปรย ✨"));
+      children.push(P(`"${story.blurb}"`, { after: 200, italics: true }));
+    }
+
+    // Chapters
+    if (chapters.length) {
+      chapters.forEach(c => {
+        children.push(H2(`ตอนที่ ${c.idx} 🍰`));
+        (c.text || "").split(/\r?\n/).forEach(line => children.push(P(line)));
+      });
+    }
+
+    return new Document({
+      sections: [
+        {
+          properties: {
+            page: {
+              margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+              size: { orientation: PageOrientation.PORTRAIT },
+            },
+          },
+          children,
+        },
+      ],
+    });
+  }
+
+  async function downloadDocxFromForm() {
+    const title = (document.getElementById("title").value || "MySweetStory").trim() || "MySweetStory";
+    const doc = buildDocFromForm();
+    const blob = await Packer.toBlob(doc);
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = `${title}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  const downloadBtn = document.getElementById("downloadBtn");
+  downloadBtn.addEventListener("click", () => {
+    const t = (document.getElementById("title").value || "").trim();
+    if (!t) {
+      const ok = confirm("ยังไม่ได้ใส่ชื่อเรื่อง ต้องการดาวน์โหลดไฟล์ชื่อ MySweetStory.docx ไหม?");
+      if (!ok) return;
+    }
+    downloadDocxFromForm().catch(err => {
+      console.error(err);
+      alert("Export .docx ผิดพลาด");
+    });
+  });
+
   // ---------------- listen auth แล้วค่อยโหลดข้อมูล ----------------
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       loginBtn.style.display  = "none";
       logoutBtn.style.display = "inline-block";
 
-      // ให้แน่ใจว่ามีโปรไฟล์ใน users/{uid}
       const profRef  = doc(db, `users/${user.uid}`);
       const profSnap = await getDoc(profRef);
       if (!profSnap.exists()) {
@@ -405,8 +536,6 @@
     }
   });
 </script>
-
-
 
 </body>
 </html>
